@@ -1,0 +1,17 @@
+- id: illness.flu
+  sourceClass: chance
+  when: "!has('flu')"
+  cooldownMonths: 2
+  hazard:
+    base:
+      perYear: 0.08
+      population: all ages
+      source: "Tokars, Olsen & Reed 2018, Clinical Infectious Diseases: about 8% of the US population has symptomatic influenza in an average season"
+      asOf: 2018
+    factors:
+      # Four in-season months at exp(1.6) and eight at 1: mean multiplier 2.318.
+      - { id: flu_season, when: "world.month == 12 || world.month <= 3", beta: 1.6 }
+    normalization: 2.318
+  effects:
+    - startProcess: flu
+  fact: { kind: illness_started, data: { illness: "'flu'" } }

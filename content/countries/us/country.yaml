@@ -1,0 +1,9 @@
+id: us
+name: United States
+demonym: American
+currency: USD
+startYear: 2026
+sexRatioAtBirth:
+  value: 1.047
+  source: "NCHS, Births: Final Data for 2023 (1,047 boys per 1,000 girls)"
+  asOf: 2023

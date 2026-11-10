@@ -1,0 +1,11 @@
+# Every cause and explanation factor, with its plain-language phrase (design §3.2, §10.4).
+# Causes of gradual change are noun phrases; factors of discrete outcomes are clauses.
+
+- { id: growing, phrase: growing }
+- { id: aging, phrase: age }
+- { id: activity.sedentary, phrase: long days of sitting }
+- { id: activity.light, phrase: not moving much, whenRising: getting out and walking }
+- { id: activity.moderate, phrase: easing off the training, whenRising: regular exercise }
+- { id: activity.active, phrase: serious training }
+- { id: illness, phrase: being ill }
+- { id: flu_season, phrase: it was flu season }

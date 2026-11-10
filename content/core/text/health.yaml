@@ -1,0 +1,74 @@
+- id: health.flu
+  fact: illness_started
+  when: "fact.illness == 'flu'"
+  variants:
+    - when: "self.age < 6"
+      text: "You run a high fever for three days. It is the flu, and it passes."
+    - when: "self.age < 6"
+      text: "The flu. You sleep through most of a week and wake up hungry."
+    - when: "self.age >= 6 && self.age < 18"
+      text: "You miss a week of school with the flu."
+    - when: "self.age >= 6 && self.age < 18"
+      text: "The flu goes through your class in {world.monthName}, and through you."
+    - when: "self.age >= 18 && self.age < 70"
+      text: "You come down with the flu and lose most of a week to it."
+    - when: "self.age >= 18 && self.age < 70"
+      text: "The flu finds you in {world.monthName}. Four days in bed, then a cough that outstays it."
+    - when: "self.age >= 18 && self.age < 70"
+      text: "A fever on Tuesday, and by Thursday it is clearly the flu."
+    - when: "self.age >= 18 && self.age < 70 && (world.month == 12 || world.month <= 3)"
+      text: "Half the people you know have the flu this month. Then you do too."
+    - when: "self.age >= 70"
+      text: "The flu puts you in bed for ten days. It takes more out of you than it used to."
+    - when: "self.age >= 70"
+      text: "You catch the flu in {world.monthName}. At {self.age}, it is not a small thing."
+
+- id: health.flu_lingers
+  fact: illness_lingers
+  variants:
+    - text: "Weeks after the flu, your legs still feel borrowed. Getting your strength back is slower than getting ill was."
+    - text: "The fever is long gone, but the flu has left you weaker, and it is not lifting quickly."
+    - text: "You are over the flu, officially. In practice you are still resting on the landing halfway up the stairs."
+
+# What slow change in the body feels like when it crosses a line (design §11.1).
+- id: health.stamina_down
+  fact: band_changed
+  when: "fact.descriptor == 'stamina' && fact.direction == 'down'"
+  variants:
+    - when: "fact.to == 'good'"
+      text: "You are not quite as quick up a hill as you were. Nobody but you would notice."
+    - when: "fact.to == 'ordinary'"
+      text: "You notice you are breathing harder at the top of a hill than you used to."
+    - when: "fact.to == 'ordinary'"
+      text: "A run for the bus leaves you leaning on the shelter, waiting for your breath to come back."
+    - when: "fact.to == 'winded'"
+      text: "You get winded on stairs you used to take two at a time."
+    - when: "fact.to == 'winded'"
+      text: "Three flights of stairs, and you have to stop and pretend to check your phone."
+    - when: "fact.to == 'easily_tired'"
+      text: "You have started planning errands around places where you can sit down."
+    - when: "fact.to == 'easily_tired'"
+      text: "A walk to the corner and back is now something you rest after."
+    - when: "fact.to == 'frail'"
+      text: "Crossing the room has become something you think about before you do it."
+
+- id: health.stamina_up
+  fact: band_changed
+  when: "fact.descriptor == 'stamina' && fact.direction == 'up'"
+  variants:
+    - when: "fact.to == 'easily_tired'"
+      text: "You make it to the corner and back without stopping. A month ago you could not."
+    - when: "fact.to == 'winded'"
+      text: "You can manage a short walk again without needing to sit down afterwards."
+    - when: "fact.to == 'ordinary'"
+      text: "The stairs have stopped being a problem."
+    - when: "fact.to == 'ordinary'"
+      text: "You realize you climbed to the third floor without thinking about it."
+    - when: "fact.to == 'good'"
+      text: "The hill on your usual route no longer makes you stop."
+    - when: "fact.to == 'good'"
+      text: "You catch yourself taking the stairs two at a time."
+    - when: "fact.to == 'excellent'"
+      text: "You go farther this month than you ever have, and feel fine afterwards."
+    - when: "fact.to == 'excellent'"
+      text: "An hour of hard effort has become something you finish wanting more of."

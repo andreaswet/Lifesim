@@ -1,0 +1,56 @@
+# Sentences for the obituary (design §10.5). Milestone 1 has only a name, dates and a body to draw
+# on; later milestones add work, family and the rest.
+- id: obituary.opening
+  variants:
+    - when: "fact.age < 2"
+      text: "{self.name} was born in {fact.bornMonth} {fact.bornYear} and died in {fact.diedMonth} {fact.diedYear}, {span(self.ageMonths)} old."
+    - when: "fact.age >= 2"
+      text: "{self.name} was born in {fact.bornMonth} {fact.bornYear} and died in {fact.diedMonth} {fact.diedYear}, aged {fact.age}."
+    - when: "fact.age >= 2"
+      text: "{self.name}, born in {fact.bornMonth} {fact.bornYear}, died in {fact.diedMonth} {fact.diedYear} at the age of {fact.age}."
+
+- id: obituary.activity
+  variants:
+    - when: "fact.mainActivity == 'sedentary'"
+      text: "{fact.He} was never one for exercise, and said so."
+    - when: "fact.mainActivity == 'light'"
+      text: "{fact.He} liked a walk and did not see the need for more."
+    - when: "fact.mainActivity == 'moderate'"
+      text: "{fact.He} kept {fact.himself} in shape for most of {fact.his} life, without making a point of it."
+    - when: "fact.mainActivity == 'active'"
+      text: "{fact.He} trained seriously for most of {fact.his} life, an athlete in habit if not in name."
+    - fallback: true
+      text: "{fact.He} lived quietly."
+
+# Sentences for "Why?" answers (design §10.4).
+- id: why.base
+  variants:
+    - text: "This happens to about one person in {fact.oneIn} in a given year."
+
+- id: why.illness.flu
+  variants:
+    - text: "About one person in {fact.oneIn} gets the flu in an average year."
+
+- id: why.death
+  variants:
+    - when: "fact.age < 1"
+      text: "About one {fact.child} in {fact.oneIn} born in the United States dies before a first birthday."
+    - when: "fact.age >= 1"
+      text: "At {fact.age}, about one {fact.person} in {fact.oneIn} dies within a year."
+
+# Milestone 1 only: mortality depends on nothing but age and sex. Removed when health arrives.
+- id: why.death_table_only
+  variants:
+    - text: "For now, age and sex are the only things the simulation counts. How you lived does not yet change these odds."
+
+- id: why.more
+  variants:
+    - text: "It was more likely because {fact.phrase}."
+
+- id: why.less
+  variants:
+    - text: "It was less likely because {fact.phrase}."
+
+- id: why.hidden
+  variants:
+    - text: "There may be more to this than you know."

@@ -1,0 +1,9 @@
+# Columns qx_male and qx_female of life-table.csv are copied from Tables 2 and 3 of the source,
+# ages 0–99. The published tables end with an open interval, "100 and older", for which only a
+# life expectancy is given; those values are below.
+source: "NCHS, United States Life Tables, 2023 (National Vital Statistics Reports vol. 74 no. 6), Tables 2 and 3"
+asOf: 2023
+openIntervalLifeExpectancy:
+  male: 2.0126
+  female: 2.2609
+maxAge: 120

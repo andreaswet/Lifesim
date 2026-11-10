@@ -1,0 +1,31 @@
+# Word bands for hidden values (design §11.1). The engine supplies the value behind each id;
+# this file supplies the wording. `margin` is hysteresis: how far past a boundary the value must
+# move before the words change.
+
+# What the body can do. Absolute for adults, so it erodes with age.
+- id: stamina
+  margin: 0.015
+  notableFromAge: 18
+  bands:
+    - { id: frail, upTo: 0.20, text: frail }
+    - { id: easily_tired, upTo: 0.32, text: easily tired }
+    - { id: winded, upTo: 0.45, text: winded by stairs }
+    - { id: ordinary, upTo: 0.62, text: in ordinary shape }
+    - { id: good, upTo: 0.85, text: in good shape }
+    - { id: excellent, text: in excellent shape }
+
+# Fitness against what the age allows.
+- id: fitness
+  margin: 0.015
+  bands:
+    - { id: poor, upTo: 0.59, text: out of shape for your age }
+    - { id: below, upTo: 0.73, text: a little out of shape for your age }
+    - { id: decent, upTo: 0.88, text: in decent shape for your age }
+    - { id: high, text: very fit for your age }
+
+- id: strength
+  margin: 0.015
+  bands:
+    - { id: weak, upTo: 0.65, text: not strong for your age }
+    - { id: ordinary, upTo: 0.88, text: of ordinary strength for your age }
+    - { id: strong, text: strong for your age }

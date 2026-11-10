@@ -1,0 +1,81 @@
+- id: life.birth
+  fact: birth
+  variants:
+    - text: "You are born on {fact.month} {fact.day}, {fact.year}."
+    - text: "{fact.month} {fact.day}, {fact.year}. You are born. For now the world is light, noise and being held."
+    - text: "You are born in the United States on {fact.month} {fact.day}, {fact.year}, one of about three and a half million Americans who will share your birth year."
+
+- id: life.first_steps
+  fact: milestone
+  when: "fact.which == 'first_steps'"
+  variants:
+    - text: "You let go of the edge of the sofa and take four steps before sitting down hard."
+    - text: "You walk. Not far, and not for long, but on your own."
+    - text: "{cap(num(self.ageMonths))} months old, you take your first steps across the kitchen floor."
+
+- id: life.school_start
+  fact: milestone
+  when: "fact.which == 'school_start'"
+  variants:
+    - text: "September. You start kindergarten, with a backpack that reaches the backs of your knees."
+    - text: "Your first day of kindergarten. You learn where your hook is, and that there are rules about the carpet."
+    - text: "School begins this September. The building is the biggest you have ever been inside."
+
+- id: life.adult
+  fact: milestone
+  when: "fact.which == 'adult'"
+  variants:
+    - text: "You turn eighteen. On paper you are an adult now: you can vote, sign a lease, and be held to what you sign."
+    - text: "Eighteen. Nothing feels different the morning after, though legally nearly everything is."
+
+- id: life.sixty_five
+  fact: milestone
+  when: "fact.which == 'sixty_five'"
+  variants:
+    - text: "You turn sixty-five, the age at which Medicare begins and at which, for most of the last century, work was expected to end."
+    - text: "Sixty-five. A card arrives in the mail to say you are now covered by Medicare."
+
+- id: life.decade
+  fact: milestone
+  when: "fact.which == 'decade'"
+  variants:
+    - when: "fact.age == 30"
+      text: "Thirty. You are no longer the youngest person in most rooms."
+    - when: "fact.age == 30"
+      text: "You turn thirty. It is the first birthday that has felt like a number."
+    - when: "fact.age == 40"
+      text: "Forty. By the tables, you are about halfway."
+    - when: "fact.age == 40"
+      text: "You turn forty. People your age have started using the word \"still\" about the things they do."
+    - when: "fact.age == 50"
+      text: "Fifty. The mail you get has changed."
+    - when: "fact.age == 50"
+      text: "You turn fifty. You have now been an adult for longer than most of your colleagues have been alive, or it feels that way."
+    - when: "fact.age == 60"
+      text: "Sixty. You find you do arithmetic about years more often than you used to."
+    - when: "fact.age == 70"
+      text: "Seventy. Roughly three in four of the people born the year you were are still alive."
+    - when: "fact.age == 80"
+      text: "You turn eighty. The birthday cards are fewer than they were, and you know why."
+    - when: "fact.age == 80 && self.sex == 'male'"
+      text: "Eighty. You have outlived the life expectancy you were born with by four years."
+    - when: "fact.age == 90"
+      text: "Ninety. About one in four of the people born your year have come this far."
+    - when: "fact.age == 100"
+      text: "One hundred. About two in every hundred people born the year you were live to see it."
+    - when: "fact.age >= 110"
+      text: "You turn {fact.age}. There is no one left who remembers the year you were born."
+
+- id: life.death
+  fact: death
+  variants:
+    - when: "fact.age < 2"
+      text: "You die in {world.monthName} {world.year}, {span(self.ageMonths)} old."
+    - when: "fact.age >= 2 && fact.age < 18"
+      text: "You die in {world.monthName} {world.year}. You were {fact.age}."
+    - when: "fact.age >= 18 && fact.age < 60"
+      text: "You die in {world.monthName} {world.year}, at {fact.age}, with most of what you had planned still ahead of you."
+    - when: "fact.age >= 60 && fact.age < 85"
+      text: "You die in {world.monthName} {world.year}, at the age of {fact.age}."
+    - when: "fact.age >= 85"
+      text: "You die in {world.monthName} {world.year}, at {fact.age}, having outlived most of the people born the year you were."

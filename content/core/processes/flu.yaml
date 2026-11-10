@@ -1,0 +1,20 @@
+- id: flu
+  stages:
+    - id: sick
+      status: Down with the flu
+      duration: { months: [1, 1] }
+      onEnter:
+        - adjust: { stock: cardio, delta: "self.age >= 70 ? -0.03 : -0.012", cause: illness }
+      transitions:
+        # In old age the flu sometimes leaves weeks of weakness behind it.
+        - { to: lingering, when: "self.age >= 70", hazard: 0.3 }
+      next: end
+    - id: lingering
+      status: Still weak after the flu
+      duration: { months: [1, 2] }
+      onEnter:
+        - emit: { kind: illness_lingers, data: { illness: "'flu'" }, significant: true }
+      monthly:
+        - adjust: { stock: cardio, delta: -0.01, cause: illness }
+        - adjust: { stock: strength, delta: -0.01, cause: illness }
+      next: end
