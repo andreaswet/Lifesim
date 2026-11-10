@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import type { DecisionView, Explanation, FeedItem, PlayerView } from '../app/protocol'
 import type { Actions } from './App'
-import { HealthPanel, LogPanel, RoutinePanel, SavesPanel } from './Panels'
+import { FamilyPanel, HealthPanel, LogPanel, RoutinePanel, SavesPanel, SchoolPanel } from './Panels'
 
 const TABS = [
   { id: 'story', label: 'Story', key: 't' },
+  { id: 'family', label: 'Family', key: 'f' },
+  { id: 'school', label: 'School', key: 'c' },
   { id: 'routine', label: 'Routine', key: 'r' },
   { id: 'health', label: 'Health', key: 'h' },
   { id: 'log', label: 'Life log', key: 'l' },
@@ -176,7 +178,7 @@ export function Game({ view, actions, busy }: { view: PlayerView; actions: Actio
           </div>
           <div>
             <dt>Place</dt>
-            <dd>United States</dd>
+            <dd>{view.place}</dd>
           </div>
           {alive && (
             <div>
@@ -204,6 +206,8 @@ export function Game({ view, actions, busy }: { view: PlayerView; actions: Actio
       <div class="columns">
         <Feed view={view} actions={actions} busy={busy} />
         <aside class="panel" aria-label={TABS.find((t) => t.id === tab)?.label ?? 'Section'}>
+          {(tab === 'school' || tab === 'story') && <SchoolPanel view={view} actions={actions} busy={busy} compact={tab === 'story'} />}
+          {(tab === 'family' || tab === 'story') && <FamilyPanel view={view} compact={tab === 'story'} />}
           {(tab === 'routine' || tab === 'story') && <RoutinePanel view={view} actions={actions} busy={busy} />}
           {(tab === 'health' || tab === 'story') && <HealthPanel view={view} />}
           {tab === 'log' && <LogPanel view={view} actions={actions} searchRef={search} />}

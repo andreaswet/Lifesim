@@ -1,0 +1,55 @@
+# Resident population, 1 July 2023. Source: US Census Bureau, Vintage 2023 state population
+# estimates (NST-EST2023-ALLDATA). Used as the weight for where a character is born; births are
+# assumed proportional to population until natality data by state is added.
+id,name,population
+ak,Alaska,733406
+al,Alabama,5108468
+ar,Arkansas,3067732
+az,Arizona,7431344
+ca,California,38965193
+co,Colorado,5877610
+ct,Connecticut,3617176
+dc,District of Columbia,678972
+de,Delaware,1031890
+fl,Florida,22610726
+ga,Georgia,11029227
+hi,Hawaii,1435138
+ia,Iowa,3207004
+id,Idaho,1964726
+il,Illinois,12549689
+in,Indiana,6862199
+ks,Kansas,2940546
+ky,Kentucky,4526154
+la,Louisiana,4573749
+ma,Massachusetts,7001399
+md,Maryland,6180253
+me,Maine,1395722
+mi,Michigan,10037261
+mn,Minnesota,5737915
+mo,Missouri,6196156
+ms,Mississippi,2939690
+mt,Montana,1132812
+nc,North Carolina,10835491
+nd,North Dakota,783926
+ne,Nebraska,1978379
+nh,New Hampshire,1402054
+nj,New Jersey,9290841
+nm,New Mexico,2114371
+nv,Nevada,3194176
+ny,New York,19571216
+oh,Ohio,11785935
+ok,Oklahoma,4053824
+or,Oregon,4233358
+pa,Pennsylvania,12961683
+ri,Rhode Island,1095962
+sc,South Carolina,5373555
+sd,South Dakota,919318
+tn,Tennessee,7126489
+tx,Texas,30503301
+ut,Utah,3417734
+va,Virginia,8715698
+vt,Vermont,647464
+wa,Washington,7812880
+wi,Wisconsin,5910955
+wv,West Virginia,1770071
+wy,Wyoming,584057

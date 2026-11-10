@@ -1,0 +1,6 @@
+# Names for schools. They are generic on purpose: thousands of real schools carry each of them,
+# and none is meant to be a particular one (design decision Q10).
+elementary: [Lincoln Elementary, Oakdale Elementary, Riverside Elementary, Maplewood Elementary, Jefferson Elementary, Hillcrest Elementary, Meadowbrook Elementary, Cedar Grove Elementary, Sunnyside Elementary, Franklin Elementary, Willow Creek Elementary, Northside Elementary]
+middle: [Roosevelt Middle School, Westfield Middle School, Lakeview Middle School, Washington Middle School, Pinecrest Middle School, Eastside Middle School, Ridgeview Middle School, Madison Middle School]
+high: [Central High School, Northside High School, Jefferson High School, Riverside High School, West High School, Lakeview High School, Eastwood High School, Roosevelt High School, South High School, Franklin High School]
+teachers: [Ms. Okafor, Mr. Reyes, Ms. Lindqvist, Mr. Brennan, Ms. Park, Mr. Whitfield, Ms. Delgado, Mr. Nowak, Ms. Hargrove, Mr. Iyer, Ms. Castellanos, Mr. Mercer, Ms. Abernathy, Mr. Tran, Ms. Kowalski, Mr. Banerjee]

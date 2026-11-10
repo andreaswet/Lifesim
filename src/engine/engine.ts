@@ -11,8 +11,11 @@ import { monthIndex, monthName, yearOf } from './core/time'
 import { emitFact, type Ctx, type Narrator } from './context'
 import type { Prepared } from './content/prepare'
 import { Command, ENGINE_VERSION, SCHEMA_VERSION, StartOptions, livingPeople, player, type Decision, type Fact, type GameState, type Person } from './state'
+import { rulesFor } from './country'
+import { actionById } from './systems/actions'
 import { updateBody } from './systems/body'
-import { chooseAutomatically, lapseDecisions, resolveDecision, runEvents } from './systems/events'
+import { chooseAutomatically, lapseDecisions, resolveDecision } from './systems/decisions'
+import { runEvents } from './systems/events'
 import { mortalityTick } from './systems/mortality'
 import { updatePerception } from './systems/perception'
 import { runProcesses } from './systems/processes'
@@ -57,11 +60,14 @@ function makeCtx(state: GameState, env: EngineEnv): Ctx {
  */
 export function tick(ctx: Ctx): void {
   const { state } = ctx
+  const rules = rulesFor(ctx.content.bundle.country.id)
   ctx.rng.beginTick()
 
   lapseDecisions(ctx) //          2. schedule: deadlines that have passed
   runProcesses(ctx) //            2. processes
   for (const p of livingPeople(state)) updateBody(ctx, p) //     3–4. routine realized; body
+  for (const p of livingPeople(state)) rules.educationMonth(ctx, p) // 5. school
+  rules.familyMonth(ctx) //       5–6, 8. parents' work, household money, partnerships, births
   for (const p of livingPeople(state)) mortalityTick(ctx, p) //  7. health hazards
   if (state.phase === 'ended') return // the month in which the player died is not finished
   for (const p of livingPeople(state)) runEvents(ctx, p) //      10. event selection
@@ -81,28 +87,15 @@ export function createLife(options: { seed: string; start?: Partial<StartOptions
   const ratio = country.sexRatioAtBirth.value
   const sex = start.sex ?? (rng.chance(ratio / (1 + ratio), 'birth.sex') ? 'male' : 'female')
   const born = monthIndex(country.startYear, rng.int(12, 'birth.month'))
-  const self: Person = {
-    id: 'p1',
-    name: {
-      first: start.firstName?.trim() || rng.pick(country.names[sex], 'birth.firstName'),
-      family: start.familyName?.trim() || rng.pick(country.names.family, 'birth.familyName'),
-    },
-    sex,
-    born,
-    birthDay: rng.range(1, 28, 'birth.day'),
-    body: { cardio: content.bundle.body.stocks.cardio!.atBirth, strength: content.bundle.body.stocks.strength!.atBirth },
-    policies: { activity: content.bundle.body.defaultActivity },
-    flags: {},
-    eventHistory: {},
-  }
 
   const state: GameState = {
     meta: { schemaVersion: SCHEMA_VERSION, engineVersion: ENGINE_VERSION, contentHash: content.bundle.hash, seed: options.seed, options: start, commandLog: [] },
     now: born,
     phase: 'alive',
-    playerId: self.id,
+    playerId: 'p1',
     lineage: [],
-    people: { [self.id]: self },
+    people: {},
+    households: {},
     processes: {},
     decisions: [],
     log: [],
@@ -110,10 +103,15 @@ export function createLife(options: { seed: string; start?: Partial<StartOptions
     ledger: {},
     perception: {},
     narration: { lastUsed: {}, counts: {} },
-    nextId: 1,
+    // The player is always p1; everyone and everything else is numbered from 2.
+    nextId: 2,
   }
   const ctx = makeCtx(state, env)
-  emitFact(ctx, { kind: 'birth', subject: self, data: { month: monthName(born), year: yearOf(born), day: self.birthDay, sex }, significant: true }, { sourceClass: 'system' })
+  const self = rulesFor(country.id).createFamily(ctx, start, { sex, birthDay: rng.range(1, 28, 'birth.day') })
+  const home = self.householdId ? state.households[self.householdId] : undefined
+  const place = country.states.find((s) => s.id === home?.state)?.name ?? country.name
+  emitFact(ctx, { kind: 'birth', subject: self, data: { month: monthName(born), year: yearOf(born), day: self.birthDay, sex, place }, significant: true }, { sourceClass: 'system' })
+  emitFact(ctx, { kind: 'family_intro', subject: self, data: {} }, { sourceClass: 'system' })
   return state
 }
 
@@ -152,8 +150,27 @@ export function step(input: GameState, commandInput: Command, env: EngineEnv): S
       resolveDecision(ctx, decision, command.optionId, false)
       break
     }
+    case 'act': {
+      const self = player(state)
+      const action = actionById(command.action)
+      const offer = action?.available(state, env.content, self)
+      if (!action || !offer) throw new EngineError(`'${command.action}' is not something you can do right now`)
+      if (offer.choices && !offer.choices.some((c) => c.id === command.choice)) throw new EngineError(`'${command.action}' needs one of: ${offer.choices.map((c) => c.id).join(', ')}`)
+      action.perform(ctx, self, command.choice)
+      break
+    }
     case 'setPolicy': {
       const self = player(state)
+      const study = command.policy.study
+      if (study !== undefined && study !== self.policies.study) {
+        const cfg = env.content.bundle.country.education.k12.study
+        const levels = cfg.levels.map((l) => l.id)
+        if (!levels.includes(study)) throw new EngineError(`Unknown study level '${study}'`)
+        if (ageInYears(self.born, state.now) < cfg.choiceFromAge) throw new EngineError('Too young to decide how hard to study')
+        const from = self.policies.study
+        self.policies.study = study
+        emitFact(ctx, { kind: 'study_changed', subject: self, data: { from, to: study, direction: levels.indexOf(study) > levels.indexOf(from) ? 'up' : 'down' } }, { sourceClass: 'player' })
+      }
       const activity = command.policy.activity
       if (activity !== undefined && activity !== self.policies.activity) {
         const body = env.content.bundle.body

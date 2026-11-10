@@ -5,6 +5,7 @@
  */
 
 import { monthlyFromAnnual } from '../content/prepare'
+import { rulesFor } from '../country'
 import { ageInYears } from '../core/time'
 import { emitFact, type Ctx } from '../context'
 import { newId, type OutcomeRecord, type Person } from '../state'
@@ -19,6 +20,7 @@ export function die(ctx: Ctx, person: Person, cause: string, outcome: OutcomeRec
     if (state.processes[id]!.subjectId === person.id) delete state.processes[id]
   }
   state.decisions = state.decisions.filter((d) => d.subjectId !== person.id)
+  rulesFor(ctx.content.bundle.country.id).afterDeath(ctx, person)
 
   const age = ageInYears(person.born, state.now)
   emitFact(ctx, { kind: 'death', subject: person, data: { age, cause }, significant: true, outcomeId: outcome.id }, { sourceClass: 'chance' })

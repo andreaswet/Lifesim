@@ -7,6 +7,7 @@
  */
 
 import { z } from 'zod'
+import { EarningsDef, EducationDef, FamilyDef, NormsDef, SchoolNamesDef, StateDef } from './country-schema'
 
 /** An expression in the content language. YAML numbers and booleans are accepted and stringified. */
 const Expr = z.union([z.string(), z.number(), z.boolean()]).transform((v) => String(v))
@@ -31,10 +32,12 @@ export type FactSpec = z.infer<typeof FactSpec>
 /** The fixed vocabulary of things content may do to state (design §9.4). */
 const Effect = z.union([
   z.strictObject({ adjust: z.strictObject({ stock: StockId, delta: Expr, cause: Id }) }),
-  z.strictObject({ setPolicy: z.strictObject({ activity: Id }) }),
+  z.strictObject({ setPolicy: z.strictObject({ activity: Id.optional(), study: Id.optional() }) }),
   z.strictObject({ setFlag: z.strictObject({ name: Id, value: Expr }) }),
   z.strictObject({ startProcess: Id }),
   z.strictObject({ emit: FactSpec }),
+  /** Calls a named piece of engine logic, where an outcome needs the engine's own models. */
+  z.strictObject({ run: Id }),
 ])
 export type Effect = z.infer<typeof Effect>
 
@@ -207,6 +210,8 @@ const BodyDef = z.strictObject({
 
 const FactorDef = z.strictObject({
   id: Id,
+  /** Wording when the factor counted against the outcome, if that differs. */
+  whenAgainst: z.string().optional(),
   /**
    * How the factor reads in plain language. Causes of gradual change are noun phrases ("regular
    * exercise"); factors of discrete outcomes are clauses ("it was flu season").
@@ -255,6 +260,12 @@ const CountryDef = z.strictObject({
     female: z.array(z.string()).min(5),
     family: z.array(z.string()).min(5),
   }),
+  states: z.array(StateDef).min(1),
+  family: FamilyDef,
+  earnings: EarningsDef,
+  education: EducationDef,
+  norms: NormsDef,
+  schools: SchoolNamesDef,
 })
 export type CountryDef = z.infer<typeof CountryDef>
 
@@ -285,7 +296,12 @@ export const FileSchemas = {
   events: z.array(EventDef),
   processes: z.array(ProcessDef),
   text: z.array(TextDef),
-  country: CountryDef.omit({ lifeTable: true, names: true }),
+  country: CountryDef.omit({ lifeTable: true, names: true, states: true, family: true, earnings: true, education: true, norms: true, schools: true }),
+  family: FamilyDef,
+  earnings: EarningsDef,
+  education: EducationDef,
+  norms: NormsDef,
+  schools: SchoolNamesDef,
   lifeTableMeta: LifeTable.omit({ male: true, female: true }),
   names: CountryDef.shape.names,
 }

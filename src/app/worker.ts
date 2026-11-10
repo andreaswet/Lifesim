@@ -34,11 +34,11 @@ async function handle(request: Request): Promise<Reply> {
           state = null
         }
       }
-      return { ok: true, view: view() }
+      return { ok: true, view: view(), setup: { states: content.bundle.country.states.map((s) => ({ id: s.id, name: s.name })) } }
     }
     case 'new': {
-      const { seed, firstName, familyName, sex } = request.options
-      state = createLife({ seed, start: { firstName, familyName, sex, protectPlayerUntilAge: PROTECT_UNTIL_AGE } }, env)
+      const { seed, firstName, familyName, sex, state: birthState } = request.options
+      state = createLife({ seed, start: { firstName, familyName, sex, state: birthState, protectPlayerUntilAge: PROTECT_UNTIL_AGE } }, env)
       await storeAutosave(exportSave(state))
       return { ok: true, view: view() }
     }

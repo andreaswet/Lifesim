@@ -29,6 +29,17 @@ export function oneIn(probability: number): string {
   return rounded <= 12 ? numberWord(rounded) : rounded.toLocaleString('en-US')
 }
 
+/** A share of people as a phrase that can start a sentence: "most", "about one in five". */
+export function shareWords(probability: number): string {
+  if (probability >= 0.88) return 'nearly all'
+  if (probability >= 0.65) return 'most'
+  if (probability >= 0.42) return 'about half of'
+  if (probability >= 0.28) return 'about a third of'
+  if (probability >= 0.16) return 'about one in five'
+  if (probability >= 0.07) return 'about one in ten'
+  return 'very few'
+}
+
 export function explainOutcome(state: GameState, content: Prepared, outcomeId: string): Explanation | null {
   const outcome = state.outcomes[outcomeId]
   const subject = outcome ? state.people[outcome.subjectId] : undefined
@@ -47,7 +58,9 @@ export function explainOutcome(state: GameState, content: Prepared, outcomeId: s
 
   const male = subject.sex === 'male'
   const base: Record<string, Scalar> = {
+    ...outcome.context,
     oneIn: oneIn(outcome.base),
+    share: shareWords(outcome.base),
     age,
     person: age < 18 ? (male ? 'boy' : 'girl') : male ? 'man' : 'woman',
     child: male ? 'boy' : 'girl',
@@ -56,16 +69,23 @@ export function explainOutcome(state: GameState, content: Prepared, outcomeId: s
   const first = say(`why.${outcome.kind}`, base) ?? say('why.base', base)
   if (first) lines.push(first)
 
+  // What counted for the outcome and what counted against it, each as one sentence, with the
+  // heaviest factor first.
   let hidden = false
   const factors = [...outcome.factors].sort((a, b) => Math.abs(b.contribution) - Math.abs(a.contribution))
+  const forIt: string[] = []
+  const against: string[] = []
   for (const factor of factors) {
     const def = content.factors.get(factor.id)
     if (!def) continue
-    if (def.visibility === 'hidden') {
-      hidden = true
-      continue
-    }
-    const line = say(factor.contribution > 0 ? 'why.more' : 'why.less', { phrase: def.phrase })
+    if (def.visibility === 'hidden') hidden = true
+    else if (factor.contribution < 0) against.push(def.whenAgainst ?? def.phrase)
+    else forIt.push(def.phrase)
+  }
+  const list = (items: string[]): string => (items.length <= 1 ? (items[0] ?? '') : `${items.slice(0, -1).join(', ')}, and ${items[items.length - 1]}`)
+  for (const [id, items] of [['why.more', forIt], ['why.less', against]] as const) {
+    if (items.length === 0) continue
+    const line = say(id, { phrase: list(items) })
     if (line) lines.push(line)
   }
   if (hidden) {

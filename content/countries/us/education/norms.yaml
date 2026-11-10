@@ -1,0 +1,11 @@
+# National norms: the mean and spread of achievement, in grade equivalents, at the end of each
+# grade (index 0 is kindergarten, 12 is twelfth grade). Produced by
+# `npm run batch -- --write-norms`; run it again whenever the learning model changes.
+# A test checks that they are not stale.
+source: "Simulated population: 8000 lives, seed norm-m2"
+literacy:
+  mean: [0.835, 1.773, 2.713, 3.654, 4.594, 5.534, 6.47, 7.405, 8.34, 9.288, 10.35, 11.463, 12.551]
+  sd: [0.837, 1.018, 1.22, 1.435, 1.656, 1.884, 2.113, 2.343, 2.574, 2.824, 3.027, 3.217, 3.441]
+math:
+  mean: [0.836, 1.775, 2.714, 3.653, 4.591, 5.529, 6.465, 7.399, 8.333, 9.281, 10.339, 11.445, 12.533]
+  sd: [0.836, 1.02, 1.221, 1.438, 1.659, 1.886, 2.115, 2.345, 2.577, 2.829, 3.038, 3.23, 3.456]

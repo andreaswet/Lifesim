@@ -1,0 +1,299 @@
+# Kindergarten to twelfth grade, the test and admissions (design §7.12). Grades and scores are
+# given exactly: they are records a pupil is handed.
+
+- id: school.started
+  fact: school_started
+  variants:
+    - text: "September. You start kindergarten at {fact.school}, with a backpack that reaches the backs of your knees. Your teacher is {fact.teacher}."
+    - text: "Your first day of kindergarten, at {fact.school}. {fact.teacher} shows you where your hook is and explains the rules about the carpet."
+    - text: "School begins this September: {fact.school}, the biggest building you have ever been inside. {fact.teacher} already knows your name."
+
+- id: school.moved_up
+  fact: school_moved_up
+  variants:
+    - when: "fact.which == 'middle'"
+      text: "Sixth grade means a new building: {fact.school}. You have a locker, and seven teachers instead of one."
+    - when: "fact.which == 'middle'"
+      text: "You start at {fact.school}. Everyone is suddenly sorted into people you sit with and people you do not."
+    - when: "fact.which == 'high'"
+      text: "You start ninth grade at {fact.school}. The seniors look like adults."
+    - when: "fact.which == 'high'"
+      text: "High school: {fact.school}. Grades count from here, and everyone keeps saying so."
+
+- id: school.report_card
+  fact: report_card
+  variants:
+    - when: "fact.grade == 0 && (fact.which == 'strong' || fact.which == 'solid')"
+      text: "Kindergarten gives remarks more than grades. Yours say you are where you should be, or past it."
+    - when: "fact.grade == 0 && fact.which != 'strong' && fact.which != 'solid'"
+      text: "Kindergarten gives remarks more than grades. Yours say you are finding the letters hard."
+    - when: "fact.grade > 0"
+      text: "Report card for {fact.gradeName}: {fact.bestLetter} in {fact.best}, {fact.worstLetter} in {fact.worst}."
+    - when: "fact.grade > 0"
+      text: "{cap(fact.gradeName)} ends. {fact.bestLetter} in {fact.best} and {fact.worstLetter} in {fact.worst}."
+    - when: "fact.grade > 0 && !fact.even"
+      text: "{cap(fact.best)} comes easily this year ({fact.bestLetter}); {fact.worst} does not ({fact.worstLetter})."
+    - when: "fact.grade > 0 && !fact.even"
+      text: "Your report card is lopsided: {fact.bestLetter} in {fact.best}, {fact.worstLetter} in {fact.worst}."
+    - when: "fact.grade > 0 && fact.even && fact.which == 'strong'"
+      text: "Top marks again in {fact.gradeName}: {fact.bestLetter} in {fact.best}, {fact.worstLetter} in {fact.worst}."
+    - when: "fact.grade > 0 && fact.which == 'solid'"
+      text: "{cap(fact.gradeName)} ends the way most of your school years do: {fact.bestLetter} in {fact.best}, {fact.worstLetter} in {fact.worst}."
+    - when: "fact.grade > 0 && fact.change == 'up'"
+      text: "Your grades are up this year: {fact.bestLetter} in {fact.best}, {fact.worstLetter} in {fact.worst}."
+    - when: "fact.grade > 0 && fact.change == 'down'"
+      text: "Your grades slip in {fact.gradeName}: {fact.worstLetter} in {fact.worst}, {fact.bestLetter} in {fact.best}."
+    - when: "fact.grade > 0 && fact.which == 'mixed'"
+      text: "A middling report for {fact.gradeName}: {fact.bestLetter} in {fact.best}, {fact.worstLetter} in {fact.worst}."
+    - when: "fact.grade > 0 && (fact.which == 'poor' || fact.which == 'failing')"
+      text: "The report card for {fact.gradeName} is one you would rather not hand over: {fact.worstLetter} in {fact.worst}, {fact.bestLetter} in {fact.best}."
+    - when: "fact.grade > 0 && fact.which == 'failing'"
+      text: "You are failing {fact.gradeName}: {fact.worstLetter} in {fact.worst}, {fact.bestLetter} in {fact.best}."
+
+- id: school.teacher_note
+  fact: teacher_note
+  variants:
+    - when: "fact.which == 'coasting'"
+      text: "{fact.teacher} writes at the bottom of the report: \"Capable of much more than this.\""
+    - when: "fact.which == 'coasting'"
+      text: "{fact.teacher} tells {home.adults} you finish early and then distract the others."
+    - when: "fact.which == 'working_hard'"
+      text: "{fact.teacher} writes that nobody in the class works harder than you do."
+    - when: "fact.which == 'ahead_math'"
+      text: "{fact.teacher} has started giving you next year's math worksheets."
+    - when: "fact.which == 'ahead_math'"
+      text: "{fact.teacher} mentions that you see how a problem works before it has been explained."
+    - when: "fact.which == 'ahead_reading'"
+      text: "{fact.teacher} sends you to the library with a note asking for something harder."
+    - when: "fact.which == 'ahead_reading'"
+      text: "{fact.teacher} reads one of your paragraphs aloud to the class, without saying whose it is."
+    - when: "fact.which == 'ahead'"
+      text: "{fact.teacher} suggests to {home.adults} that the work is too easy for you."
+    - when: "fact.which == 'behind'"
+      text: "{fact.teacher} asks {home.adults} to come in. You are behind where the class is, and it is starting to show."
+    - when: "fact.which == 'behind'"
+      text: "{fact.teacher} moves you to the table at the front and gives you different sheets from the others."
+
+- id: school.course
+  fact: course_chosen
+  variants:
+    - when: "fact.lapsed"
+      text: "Your schedule arrives with {fact.label} courses on it. You never returned the form, so the counselor chose."
+    - when: "!fact.lapsed && fact.changed && fact.which == 'honors'"
+      text: "You sign up for honors courses. The summer reading list arrives in July."
+    - when: "!fact.lapsed && fact.changed && fact.which == 'advanced'"
+      text: "You take the Advanced Placement track. Everyone says this is the hard year."
+    - when: "!fact.lapsed && fact.changed && fact.which == 'regular'"
+      text: "You move back to regular courses. The pace is easier, and so are the evenings."
+    - when: "!fact.lapsed && !fact.changed"
+      text: "You stay in {fact.label} courses."
+
+- id: school.study
+  fact: study_changed
+  variants:
+    - when: "fact.to == 'pushing'"
+      text: "You start treating school as a job: a desk, a timetable, the phone in another room."
+    - when: "fact.to == 'pushing'"
+      text: "You decide to work properly. It takes most of your evenings, starting tonight."
+    - when: "fact.to == 'steady' && fact.direction == 'up'"
+      text: "You start doing the homework, all of it, more or less on time."
+    - when: "fact.to == 'steady' && fact.direction == 'down'"
+      text: "You ease off. The work still gets done."
+    - when: "fact.to == 'minimal'"
+      text: "You stop doing more than you have to."
+    - when: "fact.to == 'minimal'"
+      text: "Homework becomes something you do on the bus, if at all."
+
+- id: school.strain
+  fact: band_changed
+  when: "fact.descriptor == 'strain'"
+  variants:
+    - when: "fact.direction == 'up' && fact.to == 'worn_down'"
+      text: "There are not enough hours in your week, and you have started borrowing them from sleep."
+    - when: "fact.direction == 'up' && fact.to == 'worn_down'"
+      text: "You are tired in a way that a weekend does not fix."
+    - when: "fact.direction == 'up' && fact.to == 'exhausted'"
+      text: "You fall asleep over a book at four in the afternoon. Something is going to have to give."
+    - when: "fact.direction == 'down' && fact.to == 'rested'"
+      text: "You have your evenings back, and your temper with them."
+    - when: "fact.direction == 'down' && fact.to != 'rested'"
+      text: "The weeks are still full, but you are no longer running behind in all of them."
+
+- id: school.test_score
+  fact: test_score
+  variants:
+    - when: "fact.which == 'high'"
+      text: "Your {fact.name} scores arrive: {fact.total}, with {fact.verbal} in reading and writing and {fact.math} in math. It is a score that opens doors."
+    - when: "fact.which == 'good'"
+      text: "Your {fact.name} scores arrive: {fact.total}, with {fact.verbal} in reading and writing and {fact.math} in math. Comfortably above the middle."
+    - when: "fact.which == 'middling'"
+      text: "Your {fact.name} scores arrive: {fact.total}, with {fact.verbal} in reading and writing and {fact.math} in math. About what most people get."
+    - when: "fact.which == 'low'"
+      text: "Your {fact.name} scores arrive: {fact.total}, with {fact.verbal} in reading and writing and {fact.math} in math. You had hoped for more."
+
+- id: school.test_skipped
+  fact: test_skipped
+  variants:
+    - when: "!fact.lapsed"
+      text: "You do not take the {fact.name}."
+    - when: "fact.lapsed"
+      text: "The registration deadline for the {fact.name} passes without you."
+
+- id: school.applied
+  fact: applied
+  variants:
+    - when: "fact.which == 'none' && !fact.lapsed"
+      text: "You do not apply anywhere. October goes by like any other month."
+    - when: "fact.which == 'none' && fact.lapsed"
+      text: "The application deadlines pass one at a time, and you let them."
+    - when: "fact.which == 'local'"
+      text: "You settle on the community college. There is nothing to send but a form in the spring."
+    - when: "fact.count > 0 && !fact.lapsed"
+      text: "You send {num(fact.count)} applications, each with its essay about a difficulty you have overcome."
+    - when: "fact.count > 0 && !fact.lapsed"
+      text: "{cap(num(fact.count))} applications go out, a few days before the deadlines."
+    - when: "fact.count > 0 && fact.lapsed"
+      text: "With days to spare and no real plan, you send {num(fact.count)} applications."
+
+- id: school.admission
+  fact: admission
+  variants:
+    - when: "fact.which == 'admitted'"
+      text: "{cap(fact.name)} says yes."
+    - when: "fact.which == 'admitted'"
+      text: "An envelope from {fact.name}: you are in."
+    - when: "fact.which == 'admitted'"
+      text: "You are admitted to {fact.name}."
+    - when: "fact.which == 'admitted' && fact.tier == 'elite'"
+      text: "{cap(fact.name)} admits you. You read the first line four times."
+    - when: "fact.which == 'denied'"
+      text: "{cap(fact.name)} says no."
+    - when: "fact.which == 'denied'"
+      text: "{cap(fact.name)} regrets to inform you."
+    - when: "fact.which == 'denied'"
+      text: "A short letter from {fact.name}. It is not the one you wanted."
+
+- id: school.college_chosen
+  fact: college_chosen
+  variants:
+    - when: "fact.parentsPay > 0 && fact.yours > 0"
+      text: "You accept the place at {fact.name}. A year will cost {money(fact.netPrice)} after grants; your parents can cover {money(fact.parentsPay)} of it."
+    - when: "fact.parentsPay > 0 && fact.yours == 0"
+      text: "You accept the place at {fact.name}. A year will cost {money(fact.netPrice)} after grants, and your parents will pay it."
+    - when: "fact.parentsPay == 0"
+      text: "You accept the place at {fact.name}. A year will cost {money(fact.netPrice)} after grants, and there is no money at home to put toward it."
+    - when: "fact.lapsed"
+      text: "At the last moment you send the form to {fact.name}. A year there will cost {money(fact.netPrice)} after grants."
+
+- id: school.college_declined
+  fact: college_declined
+  variants:
+    - when: "!fact.lapsed"
+      text: "You decide not to go to college, at least not now."
+    - when: "fact.lapsed"
+      text: "The deadline to accept passes. You are not going, at least not this year."
+
+- id: school.graduated
+  fact: hs_graduated
+  variants:
+    - when: "fact.which == 'college'"
+      text: "You graduate from {fact.school} in June with a {gpa(fact.gpa)} average. In September you start at {fact.plan}."
+    - when: "fact.which == 'college'"
+      text: "June: a gown, a folding chair, your name read out. You leave {fact.school} with a {gpa(fact.gpa)} average and a place at {fact.plan}."
+    - when: "fact.which == 'no_plan'"
+      text: "You graduate from {fact.school} in June with a {gpa(fact.gpa)} average. Nothing in particular comes next."
+    - when: "fact.which == 'no_plan'"
+      text: "June: a gown, a folding chair, your name read out. After thirteen years, school is over."
+
+- id: school.left
+  fact: school_left
+  variants:
+    - when: "fact.which == 'dropped'"
+      text: "You stop going to school in {world.monthName}, part-way through {fact.gradeName}. Nobody comes looking."
+    - when: "fact.which == 'dropped'"
+      text: "You leave school at {self.age}, without the diploma."
+    - when: "fact.which == 'not_graduated'"
+      text: "June comes and you do not graduate: your grades fall short of what the diploma requires."
+
+- id: school.stayed
+  fact: school_stayed
+  variants:
+    - when: "!fact.lapsed"
+      text: "You stay. Nothing about school gets easier because you decided to."
+    - when: "fact.lapsed"
+      text: "You keep going, mostly out of habit."
+
+- id: school.equivalency
+  fact: equivalency
+  variants:
+    - when: "fact.which == 'passed'"
+      text: "You pass the high-school equivalency exam. It counts as a diploma, on paper and nearly everywhere else."
+    - when: "fact.which == 'failed'"
+      text: "You fail the equivalency exam, by less than you feared. You can sit it again."
+
+# Prompts and labels for decisions the school system opens.
+- id: prompt.edu.course
+  variants:
+    - text: "Course selection for {fact.gradeName}. Your counselor recommends {fact.recommended} courses for you."
+
+- id: label.edu.course
+  variants:
+    - when: "fact.recommended"
+      text: "{fact.label} courses (recommended)"
+    - text: "{fact.label} courses"
+
+- id: prompt.edu.test
+  variants:
+    - text: "The {fact.name} is being given at your school this month. Most colleges that want a score want this one."
+
+- id: label.edu.take_test
+  variants: [{ text: "Take the {fact.name}" }]
+
+- id: label.edu.skip_test
+  variants: [{ text: "Skip it" }]
+
+- id: prompt.edu.apply
+  variants:
+    - when: "fact.hasTest"
+      text: "College applications are due this autumn. You have a {gpa(fact.gpa)} average and scored {fact.total} on the test. How widely you apply is up to you; each application costs a fee and several evenings."
+    - when: "!fact.hasTest"
+      text: "College applications are due this autumn. You have a {gpa(fact.gpa)} average and no test score. How widely you apply is up to you; each application costs a fee and several evenings."
+
+- id: prompt.edu.choose
+  variants:
+    - when: "fact.admitted > 0"
+      text: "The answers are in: {num(fact.admitted)} of {num(fact.applied)} said yes. You have until the end of May. The figure beside each choice is what a year would cost you after grants and after what your parents can give."
+    - when: "fact.admitted == 0 && fact.applied > 0"
+      text: "None of the colleges you applied to took you. The community college takes everyone. The figure is what a year would cost you after grants and after what your parents can give."
+    - when: "fact.applied == 0"
+      text: "It is time to say whether you will enroll at the community college in the autumn. The figure is what a year would cost you after grants and after what your parents can give."
+    - fallback: true
+      text: "It is time to decide about college."
+
+- id: label.edu.enroll
+  variants: [{ text: "Enroll at {fact.name}, a {fact.tierLabel}" }]
+
+- id: label.edu.no_college
+  variants: [{ text: "Do not go to college this year" }]
+
+- id: prompt.edu.leave
+  variants:
+    - text: "You are {self.age} and failing. You are old enough to stop coming, and lately you have been thinking about it more than about anything on the board."
+
+- id: label.edu.stay_in_school
+  variants: [{ text: "Stay in school" }]
+
+- id: label.edu.leave_school
+  variants: [{ text: "Stop going" }]
+
+- id: label.act.leave_school
+  variants: [{ text: "Leave school without a diploma" }]
+
+- id: label.act.equivalency
+  variants: [{ text: "Study for the high-school equivalency exam" }]
+
+- id: label.act.enroll_community
+  variants: [{ text: "Enroll at {fact.name} for the autumn" }]
+
+- id: label.act.apply
+  variants: [{ text: "Apply to four-year colleges" }]

@@ -29,3 +29,12 @@
     - { id: weak, upTo: 0.65, text: not strong for your age }
     - { id: ordinary, upTo: 0.88, text: of ordinary strength for your age }
     - { id: strong, text: strong for your age }
+
+# What an overfull week feels like.
+- id: strain
+  margin: 0.08
+  notableFromAge: 8
+  bands:
+    - { id: rested, upTo: 0.45, text: not short of time }
+    - { id: worn_down, upTo: 0.8, text: stretched thin and tired }
+    - { id: exhausted, text: exhausted }

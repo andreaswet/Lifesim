@@ -1,0 +1,188 @@
+# The family a child is born into, and what happens in it (design §7.11).
+
+- id: family.intro.parents
+  variants:
+    - when: "home.couple == 'married'"
+      text: "Your mother, {mother.first}, is {mother.age}; your father, {father.first}, is {father.age}. They are married."
+    - when: "home.couple == 'married'"
+      text: "You are the child of {mother.first} and {father.first} {father.family}, who are {mother.age} and {father.age} and have been married a while."
+    - when: "home.couple == 'cohabiting'"
+      text: "Your mother, {mother.first}, is {mother.age}; your father, {father.first}, is {father.age}. They live together and are not married."
+    - when: "home.couple == 'apart'"
+      text: "Your mother, {mother.first} {mother.family}, is {mother.age}. Your father, {father.first}, is {father.age} and does not live with you."
+
+- id: family.intro.sibling_item
+  variants:
+    - when: "who.age < 2"
+      text: "{who.first}, who is not yet two"
+    - when: "who.age >= 2"
+      text: "{who.first}, who is {num(who.age)}"
+
+- id: family.intro.siblings
+  variants:
+    - when: "fact.count == 0"
+      text: "You are {mother.first}'s first child."
+    - when: "fact.count == 1"
+      text: "You have an older {fact.word}: {fact.list}."
+    - when: "fact.count > 1"
+      text: "There are {num(fact.count)} children ahead of you: {fact.list}."
+
+- id: family.intro.work
+  variants:
+    - when: "father.atHome && mother.work == 'working' && father.work == 'working' && !mother.partTime"
+      text: "Both of your parents work."
+    - when: "father.atHome && mother.work == 'working' && father.work == 'working' && mother.partTime"
+      text: "Both of your parents work, your mother part-time."
+    - when: "father.atHome && father.work == 'working' && mother.work == 'at_home'"
+      text: "{father.first} works; {mother.first} is at home with you."
+    - when: "father.atHome && mother.work == 'working' && father.work == 'at_home'"
+      text: "{mother.first} works; {father.first} is at home with you."
+    - when: "father.atHome && father.work == 'out_of_work'"
+      text: "{father.first} is out of work and looking."
+    - when: "father.atHome && mother.work == 'out_of_work' && father.work != 'out_of_work'"
+      text: "{mother.first} lost her job not long ago; {father.first}'s wage is what there is."
+    - when: "!father.atHome && mother.work == 'working'"
+      text: "{mother.first} works, and manages the rest alone."
+    - when: "!father.atHome && mother.work != 'working'"
+      text: "{mother.first} is not working, and there is not much money."
+    - fallback: true
+      text: "The household gets by."
+
+# The early years are read, not played: one sentence on who looks after you, one on the house.
+- id: early.care
+  variants:
+    - when: "home.parents == 2 && mother.work == 'at_home'"
+      text: "Your days belong to your mother. {father.first} is the sound of the door in the evening."
+    - when: "home.parents == 2 && father.work == 'at_home'"
+      text: "Your days belong to your father. {mother.first} comes home after dark in winter."
+    - when: "home.parents == 2 && mother.work == 'working' && father.work == 'working'"
+      text: "On weekdays you are at day care by eight, and {mother.first} or {father.first} collects you at half past five."
+    - when: "home.parents == 2 && mother.work == 'working' && father.work == 'working'"
+      text: "Weekdays run to a timetable: day care, pick-up, dinner, bath. Weekends are the opposite."
+    - when: "home.parents == 2 && (mother.work == 'out_of_work' || father.work == 'out_of_work')"
+      text: "There is a parent at home in the daytime now, which you like, and which nobody else in the house seems to."
+    - when: "home.parents == 1 && mother.atHome && mother.work == 'working'"
+      text: "{mother.first} leaves you with a neighbor before her shift and collects you after it."
+    - when: "home.parents == 1 && mother.atHome && mother.work == 'working'"
+      text: "It is {mother.first} who gets you up, drops you off, picks you up and puts you to bed. There is no one to hand you to."
+    - when: "home.parents == 1 && mother.atHome && mother.work != 'working'"
+      text: "Most days it is only {mother.first} and you."
+    - when: "home.parents == 1 && father.atHome"
+      text: "{father.first} is raising you, and learning it as he goes."
+    - when: "fact.which == 'toddler'"
+      text: "You have learned to say no, and you use it."
+    - when: "fact.which == 'small_child'"
+      text: "You ask why about everything. The first four answers are patient."
+    - fallback: true
+      text: "You are looked after."
+
+- id: early.home
+  variants:
+    - when: "home.money == 'poor' || home.money == 'tight'"
+      text: "There is a jar on the counter for coins, and it is taken down more often than it is filled."
+    - when: "home.money == 'poor' || home.money == 'tight'"
+      text: "The heating is kept low in winter. You wear a sweater to bed and think nothing of it."
+    - when: "home.money == 'poor'"
+      text: "Some weeks the last days before payday are noodles and whatever is in the freezer."
+    - when: "home.money == 'steady'"
+      text: "The house is small, and there is enough of everything in it."
+    - when: "home.money == 'steady'"
+      text: "Nothing in the house is new, and nothing is missing."
+    - when: "home.money == 'comfortable' || home.money == 'well_off'"
+      text: "There is a room that is only yours, and a shelf of books you cannot read yet."
+    - when: "home.money == 'comfortable' || home.money == 'well_off'"
+      text: "The refrigerator is always full. You will be much older before you learn that this is not true of every house."
+    - when: "home.attention == 'plenty'"
+      text: "Someone reads to you most nights."
+    - when: "home.attention == 'plenty'"
+      text: "{mother.first} tells you the whole day as it happens: what she is cooking, what the mail said, where the bus is going."
+    - when: "home.attention == 'little'"
+      text: "The television is on most of the day, and you learn its voices."
+    - when: "home.attention == 'little'"
+      text: "You are often left to amuse yourself, and you get good at it."
+    - when: "self.olderSiblings > 0"
+      text: "You do whatever the older ones do, a few steps behind."
+    - when: "home.disruption > 0.3"
+      text: "The house has been tense lately, in a way you can feel and cannot name."
+    - fallback: true
+      text: "The days are much alike, and you are too young to mind."
+
+- id: family.sibling_born
+  fact: sibling_born
+  variants:
+    - when: "self.age < 5"
+      text: "A baby comes home: your {who.word}, {who.first}. You are no longer the smallest person in the house."
+    - when: "self.age >= 5 && self.age < 10"
+      text: "Your {who.word} {who.first} is born in {world.monthName}. You are allowed to hold {who.him} if you sit on the sofa and keep still."
+    - when: "self.age >= 10"
+      text: "Your {who.word} {who.first} is born in {world.monthName}. At {self.age}, you are old enough to be handed the baby and left with {who.him}."
+    - text: "You have a new {who.word}, {who.first}, born in {world.monthName}."
+
+- id: family.separated
+  fact: parents_separated
+  variants:
+    - when: "fact.age < 5"
+      text: "{who.first} moves out in {world.monthName}. You are too young to be told why, and old enough to notice."
+    - when: "fact.age >= 5 && fact.age < 13"
+      text: "Your parents sit you down in {world.monthName}. {who.first} is going to live somewhere else. You will stay with {stays.first}."
+    - when: "fact.age >= 5 && fact.age < 13"
+      text: "Your {who.word} moves out. Both of them tell you it is not your fault, which had not occurred to you until they said it."
+    - when: "fact.age >= 13 && fact.age < 18"
+      text: "Your parents separate in {world.monthName}. {who.first} takes an apartment across town; you stay with {stays.first} and learn two sets of rules."
+    - when: "fact.age >= 18"
+      text: "Your parents separate. {mother.first} tells you by phone, and sounds more relieved than sad."
+
+- id: family.job_lost
+  fact: parent_job_lost
+  variants:
+    - when: "self.age < 8"
+      text: "Your {who.word} is home in the daytime now. Nobody explains it, but the house is quieter."
+    - when: "self.age >= 8 && self.age < 18"
+      text: "Your {who.word} is laid off in {world.monthName}. The talk at dinner turns to what can be put off."
+    - when: "self.age >= 8 && self.age < 18 && home.parents == 2"
+      text: "{who.first} loses {who.his} job. You hear your parents talking in the kitchen long after you are supposed to be asleep."
+    - when: "self.age >= 8 && self.age < 18 && home.parents == 1"
+      text: "{who.first} loses {who.his} job. There is no second wage in the house to fall back on, and you can tell."
+    - when: "self.age >= 18"
+      text: "Your {who.word} has been let go. {who.He} says it is fine, twice, in the same conversation."
+    - when: "self.age >= 18"
+      text: "{who.first} is out of work as of {world.monthName}. At {who.age}, {who.he} knows what the job market thinks of {who.his} age."
+    - when: "self.age >= 18"
+      text: "Your {who.word} loses {who.his} job. You find out a week later, from someone else."
+    - when: "who.word != 'mother' && who.word != 'father'"
+      text: "Your {who.word} {who.first} is out of work."
+
+- id: family.job_found
+  fact: parent_job_found
+  variants:
+    - when: "self.age < 8"
+      text: "Your {who.word} goes back to work. Mornings are a rush again."
+    - when: "self.age >= 8"
+      text: "Your {who.word} finds work again in {world.monthName}. The house loosens."
+    - when: "self.age >= 8"
+      text: "{who.first} starts a new job. Nobody says how worried they had been until it is over."
+
+- id: family.still_out
+  fact: parent_still_out
+  variants:
+    - text: "{who.first} has been out of work for {span(fact.months)} now. The applications go out; not much comes back."
+    - when: "home.money == 'poor' || home.money == 'tight'"
+      text: "It is {span(fact.months)} since your {who.word} last worked. You have stopped asking for things."
+
+- id: family.death
+  fact: family_death
+  variants:
+    - when: "(who.word == 'mother' || who.word == 'father') && self.age < 10"
+      text: "Your {who.word}, {who.first}, dies in {world.monthName}. {who.He} was {fact.age}. People keep telling you how brave you are being."
+    - when: "(who.word == 'mother' || who.word == 'father') && self.age >= 10 && self.age < 30"
+      text: "Your {who.word} dies in {world.monthName}, at {fact.age}. You had assumed there was a great deal more time."
+    - when: "(who.word == 'mother' || who.word == 'father') && self.age >= 30 && fact.age >= 75"
+      text: "Your {who.word}, {who.first}, dies in {world.monthName} at {fact.age}. It is not a surprise, and it is still a shock."
+    - when: "(who.word == 'mother' || who.word == 'father') && self.age >= 30 && fact.age < 75"
+      text: "Your {who.word} dies in {world.monthName}. {who.He} was {fact.age}."
+    - when: "(who.word == 'brother' || who.word == 'sister') && fact.age < 18"
+      text: "Your {who.word} {who.first} dies in {world.monthName}. {who.He} was {num(fact.age)}. The house does not recover its sound."
+    - when: "(who.word == 'brother' || who.word == 'sister') && fact.age >= 18"
+      text: "Your {who.word} {who.first} dies in {world.monthName}, at {fact.age}."
+    - fallback: true
+      text: "{who.first} {who.family} dies in {world.monthName}, at {fact.age}."

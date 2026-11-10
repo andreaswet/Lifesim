@@ -1,4 +1,5 @@
 import { useRef, useState } from 'preact/hooks'
+import type { Setup } from '../app/protocol'
 import type { Actions } from './App'
 
 /** A short, readable seed. The seed plus the choices made is the whole life (design §4.3). */
@@ -8,17 +9,18 @@ function randomSeed(): string {
   return Array.from(words, (w) => w.toString(36)).join('-')
 }
 
-export function Start({ actions, busy }: { actions: Actions; busy: boolean }) {
+export function Start({ actions, busy, setup }: { actions: Actions; busy: boolean; setup: Setup }) {
   const [firstName, setFirstName] = useState('')
   const [sex, setSex] = useState<'' | 'male' | 'female'>('')
   const [seed, setSeed] = useState('')
+  const [place, setPlace] = useState('')
   const file = useRef<HTMLInputElement>(null)
 
   const begin = (event: Event): void => {
     event.preventDefault()
     void actions.send({
       type: 'new',
-      options: { seed: seed.trim() || randomSeed(), ...(firstName.trim() ? { firstName: firstName.trim() } : {}), ...(sex ? { sex } : {}) },
+      options: { seed: seed.trim() || randomSeed(), ...(firstName.trim() ? { firstName: firstName.trim() } : {}), ...(sex ? { sex } : {}), ...(place ? { state: place } : {}) },
     })
   }
 
@@ -34,8 +36,8 @@ export function Start({ actions, busy }: { actions: Actions; busy: boolean }) {
       <h1>Lifesim</h1>
       <p class="lede">One life in the United States, from a birth in 2026 to whenever it ends. You read it a year at a time and make the choices a person gets to make.</p>
       <p class="note">
-        This is the first milestone: time, aging and mortality work, and almost nothing else exists yet. There is no family, school, work or money. What happens to the body follows from how active you choose to be; when life ends follows the real US life
-        table.
+        This is the second of seven milestones. You are born into a family drawn from the real spread of American births, grow up in it, and go through school and, if it comes to that, college. Work, money of your own, friends and partners do not exist yet, so adult
+        life is still quiet. The family you get, like the body, is not chosen: that is the game.
       </p>
 
       <form onSubmit={begin}>
@@ -59,6 +61,18 @@ export function Start({ actions, busy }: { actions: Actions; busy: boolean }) {
             </label>
           ))}
         </fieldset>
+
+        <label>
+          <span>Born in</span>
+          <select value={place} onChange={(e) => setPlace(e.currentTarget.value)}>
+            <option value="">Anywhere in the United States, by population</option>
+            {setup.states.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        </label>
 
         <label>
           <span>Seed</span>

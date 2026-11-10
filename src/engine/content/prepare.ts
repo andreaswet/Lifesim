@@ -15,10 +15,11 @@ export interface CFact {
 
 export type CEffect =
   | { t: 'adjust'; stock: StockId; delta: Expr; cause: string }
-  | { t: 'setPolicy'; activity: string }
+  | { t: 'setPolicy'; activity: string | null; study: string | null }
   | { t: 'setFlag'; name: string; value: Expr }
   | { t: 'startProcess'; def: string }
   | { t: 'emit'; fact: CFact }
+  | { t: 'run'; hook: string }
 
 export interface CHazard {
   basePerYear: number
@@ -109,9 +110,10 @@ function cFact(f: FactSpec): CFact {
 
 function cEffect(e: Effect): CEffect {
   if ('adjust' in e) return { t: 'adjust', stock: e.adjust.stock, delta: compileExpr(e.adjust.delta), cause: e.adjust.cause }
-  if ('setPolicy' in e) return { t: 'setPolicy', activity: e.setPolicy.activity }
+  if ('setPolicy' in e) return { t: 'setPolicy', activity: e.setPolicy.activity ?? null, study: e.setPolicy.study ?? null }
   if ('setFlag' in e) return { t: 'setFlag', name: e.setFlag.name, value: compileExpr(e.setFlag.value) }
   if ('startProcess' in e) return { t: 'startProcess', def: e.startProcess }
+  if ('run' in e) return { t: 'run', hook: e.run }
   return { t: 'emit', fact: cFact(e.emit) }
 }
 

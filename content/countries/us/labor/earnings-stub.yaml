@@ -1,0 +1,44 @@
+# Milestone 2 stand-in for the labor market, so that parents have incomes and can lose jobs.
+# Milestone 3 replaces all of it with occupations, employers and the economy.
+# Dollars are 2024–2026 dollars; there is no inflation until Milestone 3.
+
+medianFullTime:
+  source: "BLS, Education pays 2024: median usual weekly earnings of full-time workers 25 and over, times 52"
+  byEducation: { less_than_hs: 38400, high_school: 48400, some_college: 53000, associate: 57100, bachelor: 80200, graduate: 100000 }
+
+# Earnings by age relative to the all-ages median for the same schooling.
+ageProfile:
+  source: "BLS CPS, median weekly earnings by age, 2024 (memory)"
+  curve: [[18, 0.55], [25, 0.82], [35, 1.0], [45, 1.08], [55, 1.06], [65, 0.95], [75, 0.6]]
+
+# Spread of log earnings among people of the same schooling and age.
+logSd: 0.55
+
+bySex:
+  source: "BLS, Highlights of Women's Earnings 2023: women's median is 83.6% of men's"
+  male: 1.09
+  female: 0.91
+
+employment:
+  source: "BLS, Employment Characteristics of Families 2023: participation of fathers 93%, of mothers with children under 18 74%; part-time share of employed mothers (memory)"
+  fathers: 0.93
+  mothers: 0.72
+  mothersPartTime: 0.25
+  partTimeEarnings: 0.5
+
+# Chance per month of losing a job, set so that the long-run unemployment rate by schooling matches
+# BLS 2024 (6.2%, 4.2%, 3.5%, 2.9%, 2.3%, 1.8%) given the job-finding rate below.
+jobLossPerMonth:
+  source: "BLS, Education pays 2024 (unemployment rates); job finding from CPS gross flows (memory)"
+  byEducation: { less_than_hs: 0.0145, high_school: 0.0096, some_college: 0.0080, associate: 0.0066, bachelor: 0.0052, graduate: 0.0040 }
+jobFindPerMonth: 0.22
+
+# While out of work: the share of former earnings that comes in, and for how long.
+unemployment: { incomeShare: 0.4, months: 6 }
+
+retirement: { age: 66, incomeShare: 0.45 }
+
+childSupport:
+  source: "Census, Custodial Mothers and Fathers and Their Child Support 2017 (memory)"
+  shareOfEarnings: 0.12
+  paysAtAll: 0.6

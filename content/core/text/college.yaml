@@ -1,0 +1,116 @@
+# College (design §7.12). Prices, loans and grades are exact: they arrive as letters and bills.
+
+- id: college.started
+  fact: college_started
+  variants:
+    - when: "fact.which == 'community' && !fact.partTime"
+      text: "You start at {fact.name}, living at home. Your classes are fitted around the bus timetable."
+    - when: "fact.which == 'community' && fact.partTime"
+      text: "You start at {fact.name} on a reduced load, and work the other hours. The numbers leave no other way."
+    - when: "fact.which == 'transfer'"
+      text: "You start over at {fact.name}, with two years of credit and nobody you know."
+    - when: "fact.which == 'elite'"
+      text: "{cap(fact.name)}, in September. Everyone you meet was the best at something where they came from."
+    - when: "fact.which != 'community' && fact.which != 'transfer' && fact.which != 'elite' && !fact.partTime"
+      text: "You move into a dormitory at {fact.name} in September. The room is smaller than it looked in the brochure."
+    - when: "fact.which != 'community' && fact.which != 'transfer' && fact.which != 'elite' && !fact.partTime"
+      text: "Your first week at {fact.name}: a lanyard, a campus map, a hall of strangers all pretending to be at ease."
+    - when: "fact.which != 'community' && fact.which != 'transfer' && fact.partTime"
+      text: "You start at {fact.name} with fewer classes than most and a job that takes the rest of your week. {money(fact.unmet)} of the year's cost is still not covered."
+
+- id: college.major
+  fact: major_chosen
+  variants:
+    - when: "!fact.changed && !fact.lapsed"
+      text: "You declare {fact.label} as your field."
+    - when: "!fact.changed && fact.lapsed"
+      text: "The form for declaring a major sits unanswered until the registrar puts you down for {fact.label}."
+    - when: "fact.changed && fact.lost > 0"
+      text: "You change your major to {fact.label}. About {fact.lost} credits do not come with you."
+    - when: "fact.changed && fact.lost == 0"
+      text: "You change your major to {fact.label}, early enough that nothing is lost."
+
+- id: college.loan
+  fact: loan_signed
+  variants:
+    - text: "You sign for a {money(fact.amount)} federal loan for the year. You now owe {money(fact.total)}."
+    - text: "Another promissory note: {money(fact.amount)}. The total stands at {money(fact.total)}."
+    - when: "fact.year == 1"
+      text: "You sign your first student loan, {money(fact.amount)}, on a web page that takes four minutes to complete."
+    - text: "This year's loan is {money(fact.amount)}. You have borrowed {money(fact.total)} in all."
+
+- id: college.term
+  fact: term_grades
+  variants:
+    - text: "Grades for the {fact.term} term: {gpa(fact.gpa)}. Your average stands at {gpa(fact.cumulative)}, with {fact.credits} of {fact.needed} credits done."
+    - text: "The {fact.term} term ends with a {gpa(fact.gpa)}; {gpa(fact.cumulative)} overall."
+    - when: "fact.which == 'strong'"
+      text: "A strong {fact.term} term: {gpa(fact.gpa)}. Overall, {gpa(fact.cumulative)}."
+    - when: "fact.which == 'strong'"
+      text: "You finish the {fact.term} term with a {gpa(fact.gpa)}, near the top of most of your classes."
+    - when: "fact.which == 'solid'"
+      text: "A {gpa(fact.gpa)} for the {fact.term} term. {fact.credits} credits down, of {fact.needed}."
+    - when: "fact.which == 'mixed'"
+      text: "The {fact.term} term comes out at {gpa(fact.gpa)}: passes, and not much more."
+    - when: "fact.which == 'poor'"
+      text: "A bad {fact.term} term: {gpa(fact.gpa)}. Not all of the classes will count. Your average is now {gpa(fact.cumulative)}."
+    - when: "fact.which == 'poor'"
+      text: "You fail part of the {fact.term} term. {gpa(fact.gpa)} for the term, {gpa(fact.cumulative)} overall."
+
+- id: college.probation
+  fact: probation
+  variants:
+    - text: "A letter from the dean: your average is {gpa(fact.cumulative)}, and you are on academic probation. Another term like this and they will ask you to leave."
+
+- id: college.left
+  fact: college_left
+  variants:
+    - when: "fact.which == 'left' && fact.loans > 0"
+      text: "You leave {fact.name} without finishing, {fact.credits} credits in. The loans, {money(fact.loans)}, come with you."
+    - when: "fact.which == 'left' && fact.loans == 0"
+      text: "You leave {fact.name} without finishing, {fact.credits} credits in."
+    - when: "fact.which == 'dismissed'"
+      text: "{cap(fact.name)} dismisses you for your grades. The letter is two paragraphs long."
+
+- id: college.transfer
+  fact: transfer_planned
+  variants:
+    - text: "{cap(fact.name)} accepts you as a transfer student. {fact.credits} of your credits will count."
+
+- id: college.degree
+  fact: degree_earned
+  variants:
+    - when: "fact.which == 'associate'"
+      text: "You finish your associate degree at {fact.name}."
+    - when: "fact.which == 'bachelor' && fact.loans > 0"
+      text: "You graduate from {fact.name} with a bachelor's degree in {fact.major}. You owe {money(fact.loans)}."
+    - when: "fact.which == 'bachelor' && fact.loans == 0"
+      text: "You graduate from {fact.name} with a bachelor's degree in {fact.major}, and no debt."
+    - when: "fact.which == 'bachelor'"
+      text: "A bachelor's degree in {fact.major} from {fact.name}, with a {gpa(fact.gpa)} average."
+
+- id: prompt.edu.major
+  variants:
+    - text: "{cap(fact.name)} asks you to declare a field of study. It can be changed later, at a cost in time."
+
+- id: prompt.edu.transfer
+  variants:
+    - when: "fact.finished"
+      text: "You have your associate degree. With a {gpa(fact.gpa)} average, you could go on for a bachelor's."
+    - when: "!fact.finished"
+      text: "You have {fact.credits} credits and a {gpa(fact.gpa)} average: enough to transfer to a four-year university now."
+
+- id: label.edu.transfer
+  variants: [{ text: "Transfer to {fact.name}, a {fact.tierLabel}" }]
+
+- id: label.edu.stay_here
+  variants: [{ text: "Finish the associate degree first" }]
+
+- id: label.edu.stop_here
+  variants: [{ text: "Stop with the associate degree" }]
+
+- id: label.act.leave_college
+  variants: [{ text: "Leave {fact.name} without finishing" }]
+
+- id: label.act.change_major
+  variants: [{ text: "Change your major" }]

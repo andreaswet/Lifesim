@@ -10,6 +10,8 @@ import type { Env } from './core/expr'
 import { clamp } from './core/dmath'
 import { ageInYears, monthOf, seasonOf, yearOf, MONTH_NAMES } from './core/time'
 import type { Prepared } from './content/prepare'
+import { involvement } from './country/us/family'
+import { parentsAtHome, relationOf, siblingsOf } from './people'
 import type { GameState, Person, ProcessInstance, Scalar } from './state'
 
 /** Paths content may read. A trailing `.*` allows any name beneath. */
@@ -29,6 +31,17 @@ export const ACCESSOR_PATHS: Record<'base' | 'process' | 'fact', string[]> = {
     'self.family',
     'self.name',
     'self.flag.*',
+    'self.trait.*',
+    'self.schooling',
+    'self.grade',
+    'self.study',
+    'self.olderSiblings',
+    'self.siblings',
+    'home.*',
+    'mother.*',
+    'father.*',
+    'who.*',
+    'stays.*',
     'world.month',
     'world.monthName',
     'world.year',
@@ -78,12 +91,69 @@ const PURE_FNS = {
   ordinal: (n: number) => ordinalWord(n),
   span: (months: number) => spanWords(months),
   cap: (s: string) => (s.length ? s[0]!.toUpperCase() + s.slice(1) : s),
+  /** A grade average the way a transcript prints it: "3.50". */
+  gpa: (n: number) => n.toFixed(2),
+  /** Whole dollars with separators: "$12,300". The currency symbol follows the country pack later. */
+  money: (n: number) => '$' + Math.round(n).toLocaleString('en-US'),
 }
 
 /** Helpers that need the person they are evaluated for. */
 const CONTEXT_FN_NAMES = ['has', 'fired', 'monthsSince'] as const
 
 export const FUNCTION_NAMES: string[] = [...Object.keys(PURE_FNS), ...CONTEXT_FN_NAMES]
+
+const PRONOUNS = {
+  male: { he: 'he', him: 'him', his: 'his', He: 'He', His: 'His', himself: 'himself' },
+  female: { he: 'she', him: 'her', his: 'her', He: 'She', His: 'Her', himself: 'herself' },
+}
+
+/** Another person as content may read them, from the point of view of `self`. */
+export function personView(state: GameState, self: Person, other: Person): Record<string, unknown> {
+  const at = other.died?.at ?? state.now
+  const work = other.work
+  return {
+    first: other.name.first,
+    family: other.name.family,
+    name: `${other.name.first} ${other.name.family}`,
+    age: ageInYears(other.born, at),
+    alive: !other.died,
+    atHome: !other.died && other.householdId !== null && other.householdId === self.householdId,
+    // "working", "out_of_work", or "at_home" for someone who is not in the labor market.
+    work: !work || work.hours === 'none' ? 'at_home' : work.employed ? 'working' : 'out_of_work',
+    partTime: work?.hours === 'part',
+    word: relationOf(self, other),
+    older: other.born < self.born,
+    sex: other.sex,
+    ...PRONOUNS[other.sex],
+  }
+}
+
+function homeView(state: GameState, content: Prepared, self: Person): Record<string, unknown> {
+  const home = self.householdId ? state.households[self.householdId] : undefined
+  const parents = parentsAtHome(state, self)
+  const poverty = content.bundle.country.family.poverty
+  const ratio = home ? home.income / (poverty.base + poverty.perAdditional * Math.max(0, home.members.length - 1)) : 0
+  const attention = involvement({ state, content }, self)
+  const mother = self.motherId ? state.people[self.motherId] : undefined
+  const father = self.fatherId ? state.people[self.fatherId] : undefined
+  return {
+    parents: parents.length,
+    // The grown-ups at home as a child would say it: "your parents", "your mother", "your father".
+    adults: parents.length >= 2 ? 'your parents' : parents.length === 1 ? `your ${parents[0]!.sex === 'female' ? 'mother' : 'father'}` : 'the adults at home',
+    people: home?.members.length ?? 1,
+    children: home ? home.members.filter((id) => ageInYears(state.people[id]?.born ?? 0, state.now) < 18).length : 0,
+    place: content.bundle.country.states.find((s) => s.id === home?.state)?.name ?? content.bundle.country.name,
+    // Income against needs in words a child could feel: "poor", "tight", "steady", "comfortable", "well_off".
+    money: ratio < 1 ? 'poor' : ratio < 2 ? 'tight' : ratio < 4 ? 'steady' : ratio < 7 ? 'comfortable' : 'well_off',
+    disruption: home?.disruption ?? 0,
+    // How much time and attention the parents have for the child: "little", "some" or "plenty".
+    attention: attention < -0.6 ? 'little' : attention > 0.5 ? 'plenty' : 'some',
+    // How the parents stand to each other: "married", "cohabiting", or "apart".
+    couple: mother && father && mother.partner?.id === father.id ? mother.partner.status : 'apart',
+    school: self.education.school?.name ?? '',
+    teacher: self.education.school?.teacher ?? '',
+  }
+}
 
 export interface EnvExtras {
   process?: ProcessInstance
@@ -113,6 +183,12 @@ export function makeEnv(state: GameState, content: Prepared, p: Person, extras: 
     family: p.name.family,
     name: `${p.name.first} ${p.name.family}`,
     flag: p.flags,
+    trait: p.traits,
+    schooling: p.education.status,
+    grade: p.education.grade ?? -1,
+    study: p.policies.study,
+    olderSiblings: siblingsOf(state, p).filter((s) => s.born < p.born).length,
+    siblings: siblingsOf(state, p).length,
   }
   const world = {
     month: monthOf(month) + 1,
@@ -120,7 +196,15 @@ export function makeEnv(state: GameState, content: Prepared, p: Person, extras: 
     year: yearOf(month),
     season: seasonOf(month),
   }
-  const vars: Record<string, unknown> = { self, world }
+  const mother = p.motherId ? state.people[p.motherId] : undefined
+  const father = p.fatherId ? state.people[p.fatherId] : undefined
+  const vars: Record<string, unknown> = {
+    self,
+    world,
+    home: homeView(state, content, p),
+    mother: mother ? personView(state, p, mother) : null,
+    father: father ? personView(state, p, father) : null,
+  }
   if (extras.process) {
     vars.process = {
       stage: extras.process.stage,
@@ -128,7 +212,15 @@ export function makeEnv(state: GameState, content: Prepared, p: Person, extras: 
       months: month - extras.process.started,
     }
   }
-  if (extras.fact) vars.fact = extras.fact
+  if (extras.fact) {
+    vars.fact = extras.fact
+    // A fact about someone else names them by id; content reads them as `who` (and `stays`).
+    for (const key of ['who', 'stays'] as const) {
+      const id = extras.fact[key]
+      const other = typeof id === 'string' ? state.people[id] : undefined
+      vars[key] = other ? personView(state, p, other) : null
+    }
+  }
 
   const fns = {
     ...PURE_FNS,
