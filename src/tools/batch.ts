@@ -13,7 +13,7 @@ import { availableParallelism } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { Worker, isMainThread, parentPort, workerData } from 'node:worker_threads'
-import { loadContent } from '../content/load-node'
+import { CONTENT_DIR, loadContent } from '../content/load-node'
 import { prepareContent } from '../engine'
 import { createNarrator } from '../narrative'
 import { runBatch, summarize, SURVIVAL_AGES, type BatchOptions, type LifeResult } from './batch-lib'
@@ -92,6 +92,53 @@ lines.push('')
 lines.push('Decisions opened per year, by stage: ' + Object.entries(s.decisionsPerYearByStage).map(([k, v]) => `${k} ${v.toFixed(2)}`).join(', '))
 lines.push('Significant feed items by source: ' + Object.entries(s.significantSourceShares).map(([k, v]) => `${k} ${pct(v)}`).join(', '))
 lines.push('Cardio at 60 by activity level: ' + Object.entries(s.cardioAt60ByActivity).map(([k, v]) => `${k} ${v.mean.toFixed(3)} (n=${v.lives})`).join(', '))
+const e = s.schooling
+lines.push('')
+lines.push('Family and schooling                                 simulated     target')
+const row = (label: string, value: string, target: string): void => void lines.push(`  ${label.padEnd(50)} ${value.padStart(8)}     ${target}`)
+row('Born to married / cohabiting / lone mother', `${pct(e.birth.married)} ${pct(e.birth.cohabiting)} ${pct(e.birth.apart)}`.replace(/%/g, ''), '60 / 24 / 16 (NCHS, NSFG)')
+row('Median household income at birth', '$' + Math.round(e.birth.medianIncome).toLocaleString('en-US'), '')
+row('Children under 18 living with both parents', pct(e.childrenWithTwoParents), 'about 65% (Census CPS 2023)')
+row('Brothers and sisters (mean)', e.birth.meanSiblings.toFixed(2), 'about 1.8, seen from the child')
+row('Mean high-school GPA', e.meanHsGpa.toFixed(2), '3.0–3.1 (NAEP HSTS 2019)')
+row('Graduate high school with their class', pct(e.graduatedOnTime), '86–87% (NCES 219.46)')
+row('Completed high school by 27', pct(e.completedHighSchoolAt27), '94.3% (NCES 104.20, ages 25–29)')
+row('Take the SAT', pct(e.testTakers), '')
+row('SAT total, mean (sd)', `${e.meanTestTotal.toFixed(0)} (${e.sdTestTotal.toFixed(0)})`, '1028 (about 215)')
+row('Enroll right after high school', pct(e.enrolledRightAway.any), '62.0% (NCES 302.10)')
+row('  at a two-year college', pct(e.enrolledRightAway.twoYear), '16.9%')
+row('  at a four-year college', pct(e.enrolledRightAway.fourYear), '45.1%')
+row('Ever enrolled in college by 27', pct(e.everEnrolledBy27), 'about 84% (NCES ELS:2002, by 26)')
+row('Associate degree or higher by 27', pct(e.associateOrHigherAt27), '49.7% (NCES 104.20)')
+row("Bachelor's or higher by 27", pct(e.bachelorAt27), '40.5%')
+row('  men / women', `${pct(e.bachelorAt27BySex.male)} / ${pct(e.bachelorAt27BySex.female)}`, '35.9% / 45.2%')
+row("Bachelor's by family income quarter, poorest first", e.bachelorByIncomeQuarter.map((x) => (100 * x).toFixed(0)).join(' / '), 'about 15 / 28 / 45 / 62 (Pell Institute)')
+row('Enrolled right away, by income quarter', e.enrolledByIncomeQuarter.map((x) => (100 * x).toFixed(0)).join(' / '), '')
+row('Achievement gap, 90th vs 10th income percentile (SD)', e.achievementGap9010.toFixed(2), '1.0–1.25 (Reardon 2011)')
+row('Parent–child schooling correlation', e.parentChildEducationCorrelation.toFixed(2), '0.46 (Hertz et al. 2007)')
+row('Four-year entrants with a degree within six years', pct(e.sixYearCompletionFourYear), 'about 70% (NSC; 64.6% at first college, NCES 326.10)')
+row('Two-year entrants: associate / transferred / bachelor', `${(100 * e.twoYearEntrants.associate).toFixed(0)} / ${(100 * e.twoYearEntrants.transferred).toFixed(0)} / ${(100 * e.twoYearEntrants.bachelor).toFixed(0)}`, 'about 30 / 33 / 16')
+row("Bachelor's graduates who borrowed", pct(e.borrowedAmongBachelors), 'about half (College Board)')
+row('Their average debt', '$' + Math.round(e.meanDebtAmongBorrowers).toLocaleString('en-US'), 'about $29,000, private loans included')
+lines.push('  Enrollment by kind of college: ' + Object.entries(e.byTier).map(([k, v]) => `${k} ${pct(v)}`).join(', '))
+if (process.argv.includes('--write-norms')) {
+  const body = (['literacy', 'math'] as const).map((subject) => `${subject}:\n  mean: [${e.norms[subject].mean.join(', ')}]\n  sd: [${e.norms[subject].sd.join(', ')}]`).join('\n')
+  writeFileSync(
+    join(CONTENT_DIR, 'countries/us/education/norms.yaml'),
+    `# National norms: the mean and spread of achievement, in grade equivalents, at the end of each\n# grade (index 0 is kindergarten, 12 is twelfth grade). Produced by\n# \`npm run batch -- --write-norms\`; run it again whenever the learning model changes.\n# A test checks that they are not stale.\nsource: "Simulated population: ${lives} lives, seed ${seed}"\n${body}\n`,
+  )
+  lines.push('')
+  lines.push('Norms written to content/countries/us/education/norms.yaml')
+}
+if (process.argv.includes('--norms')) {
+  lines.push('')
+  lines.push('Norms for content/countries/us/education/norms.yaml:')
+  for (const subject of ['literacy', 'math'] as const) {
+    lines.push(`${subject}:`)
+    lines.push(`  mean: [${e.norms[subject].mean.join(', ')}]`)
+    lines.push(`  sd: [${e.norms[subject].sd.join(', ')}]`)
+  }
+}
 if (withText) {
   lines.push('')
   lines.push(`Text: ${s.text.feedLinesPerLife.toFixed(0)} feed lines per life, ${s.text.distinctVariantsUsed} distinct variants used`)

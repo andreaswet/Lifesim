@@ -29,6 +29,17 @@ export function oneIn(probability: number): string {
   return rounded <= 12 ? numberWord(rounded) : rounded.toLocaleString('en-US')
 }
 
+/** A share of people as a phrase that can start a sentence: "most", "about one in five". */
+export function shareWords(probability: number): string {
+  if (probability >= 0.88) return 'nearly all'
+  if (probability >= 0.65) return 'most'
+  if (probability >= 0.42) return 'about half of'
+  if (probability >= 0.28) return 'about a third of'
+  if (probability >= 0.16) return 'about one in five'
+  if (probability >= 0.07) return 'about one in ten'
+  return 'very few'
+}
+
 export function explainOutcome(state: GameState, content: Prepared, outcomeId: string): Explanation | null {
   const outcome = state.outcomes[outcomeId]
   const subject = outcome ? state.people[outcome.subjectId] : undefined
@@ -47,7 +58,9 @@ export function explainOutcome(state: GameState, content: Prepared, outcomeId: s
 
   const male = subject.sex === 'male'
   const base: Record<string, Scalar> = {
+    ...outcome.context,
     oneIn: oneIn(outcome.base),
+    share: shareWords(outcome.base),
     age,
     person: age < 18 ? (male ? 'boy' : 'girl') : male ? 'man' : 'woman',
     child: male ? 'boy' : 'girl',
@@ -65,7 +78,8 @@ export function explainOutcome(state: GameState, content: Prepared, outcomeId: s
       hidden = true
       continue
     }
-    const line = say(factor.contribution > 0 ? 'why.more' : 'why.less', { phrase: def.phrase })
+    const against = factor.contribution < 0
+    const line = say(against ? 'why.less' : 'why.more', { phrase: against ? (def.whenAgainst ?? def.phrase) : def.phrase })
     if (line) lines.push(line)
   }
   if (hidden) {

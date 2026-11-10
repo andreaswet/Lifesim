@@ -9,3 +9,11 @@
 - { id: activity.active, phrase: serious training }
 - { id: illness, phrase: being ill }
 - { id: flu_season, phrase: it was flu season }
+
+# College admissions (design §7.12). `phrase` is used when the factor helped, `whenAgainst` when it hurt.
+- { id: adm_grades, phrase: "your grades were better than most applicants'", whenAgainst: "your grades were below most applicants'" }
+- { id: adm_test, phrase: "your test score was above most applicants'", whenAgainst: "your test score was below most applicants'" }
+- { id: adm_no_test, phrase: you sent no test score }
+- { id: adm_rigor, phrase: you had taken demanding courses, whenAgainst: you had taken few demanding courses }
+- { id: adm_competition, phrase: it was an easier year than most to get in, whenAgainst: more people applied that year than usual }
+- { id: eq_standing, phrase: you had been keeping up before you left school, whenAgainst: you had fallen a long way behind before you left school }

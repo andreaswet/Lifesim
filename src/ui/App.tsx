@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'preact/hooks'
 import type { GameClient } from '../app/client'
-import type { Explanation, PlayerView, Request } from '../app/protocol'
+import type { Explanation, PlayerView, Request, Setup } from '../app/protocol'
 import { Game } from './Game'
 import { Start } from './Start'
 
@@ -17,6 +17,7 @@ export function App({ client }: { client: GameClient }) {
   const [ready, setReady] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [setup, setSetup] = useState<Setup>({ states: [] })
 
   const send = useCallback(
     async (request: Request): Promise<boolean> => {
@@ -29,6 +30,7 @@ export function App({ client }: { client: GameClient }) {
       }
       setError('')
       setView(reply.view)
+      if (reply.setup) setSetup(reply.setup)
       return true
     },
     [client],
@@ -66,7 +68,7 @@ export function App({ client }: { client: GameClient }) {
           </button>
         </div>
       )}
-      {view ? <Game view={view} actions={actions} busy={busy} /> : <Start actions={actions} busy={busy} />}
+      {view ? <Game view={view} actions={actions} busy={busy} /> : <Start actions={actions} busy={busy} setup={setup} />}
     </>
   )
 }

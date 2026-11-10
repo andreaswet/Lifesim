@@ -11,6 +11,7 @@ import { ageInYears } from './core/time'
 import type { CEffect, CFact, Prepared } from './content/prepare'
 import type { StockId } from './content/schema'
 import { newId, type Fact, type GameState, type LifeLogEntry, type Person, type ProcessInstance, type Scalar } from './state'
+import { runHook } from './systems/actions'
 import { makeEnv, type EnvExtras } from './views'
 
 export interface Narration {
@@ -142,7 +143,8 @@ export function applyEffects(ctx: Ctx, effects: readonly CEffect[], subject: Per
         adjustStock(ctx, subject, effect.stock, evalNumber(effect.delta, env), effect.cause)
         break
       case 'setPolicy':
-        subject.policies.activity = effect.activity
+        if (effect.activity) subject.policies.activity = effect.activity
+        if (effect.study) subject.policies.study = effect.study
         break
       case 'setFlag': {
         const v = evalExpr(effect.value, env)
@@ -151,6 +153,9 @@ export function applyEffects(ctx: Ctx, effects: readonly CEffect[], subject: Per
       }
       case 'startProcess':
         startProcess(ctx, effect.def, subject, sourceClass)
+        break
+      case 'run':
+        runHook(ctx, effect.hook, subject)
         break
       case 'emit':
         emitFact(ctx, { kind: effect.fact.kind, subject, data: evalFactData(effect.fact, env), significant: effect.fact.significant }, { sourceClass })

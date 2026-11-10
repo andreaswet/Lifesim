@@ -1,0 +1,300 @@
+# The US school system (design §7.12): kindergarten to grade 12, the SAT, college admissions by
+# tier, paying for college, and degrees.
+#
+# Achievement is measured in grade equivalents: 0 at the start of kindergarten, and the average
+# pupil gains about 1 a year. A pupil's position among peers (z) comes from the norms in
+# norms.yaml, which the batch tool produces, the way a real test is normed.
+
+k12:
+  entryAge: 5
+  # Calendar months (1–12) in which school is in session. Report cards come in June.
+  schoolMonths: [9, 10, 11, 12, 1, 2, 3, 4, 5]
+  subjects:
+    - { id: literacy, aptitude: verbal, label: reading and writing }
+    - { id: math, aptitude: quantitative, label: math }
+  # How much of the other aptitude carries into a subject.
+  crossAptitude: 0.35
+
+  # Where a child stands on the first day of kindergarten, in grade equivalents: sd × a z built
+  # from the weights. Gaps by family background are already present at school entry
+  # (Reardon 2011; Lee & Burkam 2002).
+  readiness: { aptitude: 0.55, home: 0.22, noise: 0.8, sd: 0.7 }
+
+  # The log of the rate of learning, relative to one grade a year. Sizes are set so that the
+  # spread of achievement widens with grade as it does in national test data (Bloom et al. 2008)
+  # and so that the gap between high- and low-income children is about one standard deviation
+  # (Reardon 2011).
+  learning:
+    aptitude: 0.17
+    effort: 0.065
+    school: 0.035
+    home: 0.025
+    disruption: -0.14
+    strain: -0.10
+    yearNoise: 0.07
+    # Harder courses teach more to pupils ready for them and less to pupils who are not.
+    courseFit: 0.05
+  # Change over the three summer months, in grade equivalents: children from homes that support
+  # learning hold their ground, others slip (Alexander, Entwisle & Olson 2007).
+  summer: { base: -0.07, home: 0.06 }
+
+  # Effort is what the pupil puts in. It starts from the chosen study level and is moved by
+  # conscientiousness, by how much structure the parents impose, and by strain.
+  study:
+    levels:
+      - { id: minimal, label: The minimum, description: "Homework when it cannot be avoided.", hoursPerWeek: 1, effort: -1 }
+      - { id: steady, label: Steady, description: "Homework done, tests studied for.", hoursPerWeek: 5, effort: 0 }
+      - { id: pushing, label: Pushing hard, description: "Everything done properly, and then some. It takes most evenings.", hoursPerWeek: 12, effort: 1 }
+    default: steady
+    choiceFromAge: 8
+    conscientiousness: 0.45
+    # Parents who impose structure keep a child at the minimum from doing nothing at all.
+    parentalStructure: 0.35
+    strain: -0.8
+    engagementBySex:
+      source: "Voyer & Voyer 2014 meta-analysis: girls earn higher school marks, d = 0.23"
+      female: 0.7
+      male: 0
+  # Hours a week a pupil has for homework and training before it starts to cost them. More than
+  # this builds strain, which lowers effort and learning.
+  load: { freeHours: 15, perConscientiousness: 2, strainRiseMonths: 6, strainFallMonths: 3, fullStrainAtExtraHours: 8 }
+
+  # Report-card grades on the 4-point scale, per subject.
+  grades:
+    source: "NAEP High School Transcript Study 2019: mean GPA 3.11 (memory)"
+    mean: 3.06
+    achievement: 0.58
+    effort: 0.3
+    noise: 0.33
+  courseLevels:
+    - { id: regular, label: Regular, fromGrade: 0, recommendedZ: -9, gradePenalty: 0, rigor: 0 }
+    - { id: honors, label: Honors, fromGrade: 9, recommendedZ: 0.35, gradePenalty: 0.12, rigor: 1 }
+    - { id: advanced, label: Advanced Placement, fromGrade: 11, recommendedZ: 0.95, gradePenalty: 0.24, rigor: 2 }
+
+  # Losing touch with school. A slow stock built from the weights below; from the leaving age it
+  # sets the chance of dropping out.
+  disengagement:
+    months: 12
+    failing: 0.45
+    lowAchievement: 0.2
+    disruption: 0.25
+    lowInvolvement: 0.12
+    conscientiousness: -0.1
+  dropout:
+    source: "Calibrated to NCES Digest 2023, Table 219.46: 86–87% graduate with their class"
+    minAge: 16
+    perMonthAtZero: 0.0018
+    steepness: 5.5
+    promptAbove: 0.55
+  graduationGpa: 1.0
+  # Passing a high-school equivalency test later.
+  equivalency:
+    source: "Calibrated to NCES Digest 2023, Table 104.20: 94.3% of 25–29-year-olds completed high school"
+    perMonth: 0.013
+    untilAge: 26
+
+test:
+  name: SAT
+  source: "College Board, 2023 SAT Suite Annual Report: mean total 1028, sd about 215 (memory)"
+  grade: 11
+  month: 3
+  sectionMean: 468
+  sectionSd: 116
+  # How much of a section score is achievement rather than luck on the day.
+  reliability: 0.91
+  fee: 68
+
+admissions:
+  # Weights of the applicant's record. GPA and score are measured against applicants nationally.
+  gpaMean: 3.0
+  gpaSd: 0.62
+  testMean: 1030
+  testSd: 205
+  weights: { gpa: 0.5, test: 0.35, rigor: 0.15 }
+  noTestPenalty: 0.3
+  # Year-to-year swings in how many places there are for how many applicants.
+  competitionSd: 0.25
+  month: 3
+  decideByMonth: 5
+  applyMonth: 10
+  strategies:
+    - { id: none, label: Do not apply anywhere, tiers: [], fee: 0 }
+    - { id: local, label: Plan on the community college, tiers: [], fee: 0 }
+    - { id: public, label: Apply to state universities, tiers: [public_regional, public_flagship], fee: 110 }
+    - { id: broad, label: "Apply widely: state universities and private colleges", tiers: [public_regional, public_flagship, private, private_selective], fee: 260 }
+    - { id: reach, label: "Aim high: the most selective colleges, with fallbacks", tiers: [public_regional, public_flagship, private_selective, elite], fee: 390 }
+
+# Family income bands for net price, upper bounds in dollars (the bands NCES reports).
+incomeBands: [30000, 48000, 75000, 110000]
+
+# Kinds of college. Net price is what a year costs after grants, living costs included, by family
+# income band. `bar` is the admissions index of an applicant with an even chance; `difficulty` is
+# how demanding the courses are, on the same scale as achievement (z).
+tiers:
+  - id: community
+    label: community college
+    years: 2
+    credential: associate
+    open: true
+    bar: -9
+    slope: 1
+    difficulty: -0.55
+    prestige: 0
+    partTimeShare: 0.35
+    netPrice: [5990, 6710, 9070, 11820, 12930]
+    source: "NCES Digest 2023, Table 331.30: public 2-year, 2020–21"
+    names: [Alder Ridge Community College, Tannery Creek Community College, Marlow County Community College, Hollis Valley Community College, Pine Hollow Community College, Castle Point Community College]
+  - id: public_regional
+    label: regional state university
+    years: 4
+    credential: bachelor
+    open: false
+    bar: -0.75
+    slope: 2.0
+    difficulty: -0.05
+    prestige: 1
+    partTimeShare: 0.1
+    netPrice: [8810, 10200, 13760, 18490, 21750]
+    source: "NCES Digest 2023, Table 331.30: public 4-year in-state, 2020–21"
+    names: [Easton Vale State University, Corwin State University, Larkmoor State University, Wendell State University, Halbrook State University, North Calder State University]
+  - id: public_flagship
+    label: flagship state university
+    years: 4
+    credential: bachelor
+    open: false
+    bar: 0.35
+    slope: 2.2
+    difficulty: 0.5
+    prestige: 2
+    partTimeShare: 0.03
+    netPrice: [9700, 11200, 15100, 20300, 24900]
+    source: "NCES Digest 2023, Table 331.30: public 4-year in-state, 2020–21, plus 10–15% for flagship campuses (memory)"
+    names: [Kestrel University, the University of Ardenmoor, Thornfield University, the University of Castellane, Wexley University, the University of Sorrel Bay]
+  - id: private
+    label: private college
+    years: 4
+    credential: bachelor
+    open: false
+    bar: -0.45
+    slope: 2.0
+    difficulty: 0.1
+    prestige: 1.2
+    partTimeShare: 0.05
+    netPrice: [19030, 19170, 21760, 25950, 34450]
+    source: "NCES Digest 2023, Table 331.30: private nonprofit 4-year, 2020–21"
+    names: [Calder College, St. Aldric College, Merriton College, Brightwater College, Hadleigh College, Ostrander College]
+  - id: private_selective
+    label: selective private university
+    years: 4
+    credential: bachelor
+    open: false
+    bar: 1.0
+    slope: 2.4
+    difficulty: 0.85
+    prestige: 3
+    partTimeShare: 0.01
+    netPrice: [14000, 16000, 21500, 31000, 48000]
+    source: "College Scorecard net prices at selective private universities, 2021–22 (memory)"
+    names: [Wexford University, Lindenhall University, Ashby University, Marchetti University, Faircloth University, Trevanion University]
+  - id: elite
+    label: one of the most selective universities in the country
+    years: 4
+    credential: bachelor
+    open: false
+    bar: 2.05
+    slope: 2.6
+    difficulty: 1.3
+    prestige: 4.5
+    partTimeShare: 0
+    netPrice: [4500, 6500, 13500, 29000, 64000]
+    source: "College Scorecard net prices at the most selective universities, 2021–22 (memory)"
+    names: [Harrowgate University, Pemberton University, Aldersgate University, Vane University, Lockridge University]
+
+majors:
+  - { id: stem, label: Science and engineering, difficulty: 0.45, math: 0.7 }
+  - { id: health, label: Health sciences and nursing, difficulty: 0.3, math: 0.4 }
+  - { id: business, label: Business, difficulty: 0.0, math: 0.4 }
+  - { id: social, label: Social sciences, difficulty: 0.0, math: 0.25 }
+  - { id: humanities, label: Humanities and arts, difficulty: -0.05, math: 0.05 }
+  - { id: education, label: Education, difficulty: -0.2, math: 0.15 }
+  - { id: general, label: General studies, difficulty: -0.2, math: 0.2 }
+
+college:
+  creditsPerTerm: 15
+  partTimeCredits: 8
+  creditsFor: { associate: 60, bachelor: 120 }
+  # Term grades: a mean, plus preparation relative to how demanding the college and the major are.
+  grades: { mean: 2.95, preparation: 0.55, effort: 0.28, unmetNeed: -0.25, noise: 0.5 }
+  # Share of attempted credits earned, by term GPA.
+  creditsEarned: [[1.0, 0.34], [1.7, 0.67], [5, 1.0]]
+  probationBelow: 2.0
+  dismissalBelow: 1.5
+  changeMajorCredits: 9
+  # The chance per term of leaving without a degree, on the log-odds scale.
+  leaving:
+    source: "Calibrated to National Student Clearinghouse, Completing College 2023: about 70% of students who start at a four-year college hold a degree from some college six years later (memory). NCES Digest 2023 Table 326.10 gives 64.6% at the first college attended; the simulation has no moves between four-year colleges, so the first figure is the comparable one."
+    base: -3.8
+    lowGpa: 1.1
+    unmetNeedPer5000: 0.55
+    partTime: 0.75
+    communityCollege: 2.5
+    conscientiousness: -0.25
+    firstGeneration: 0.3
+    perTermBeyondNormal: 0.25
+  # Enrolling later: people with a diploma and no degree who start, or go back to, college in
+  # their twenties. Each August the chance follows how set on college they are and falls with
+  # every year away. Most start at a community college; the rest apply to four-year colleges.
+  lateEntry:
+    source: "NCES ELS:2002: 84% of 2002 sophomores had enrolled in college by age 26, against about 62% right after high school"
+    fromAge: 19
+    untilAge: 27
+    base: 0.1
+    aspiration: 0.7
+    perYearAway: -0.35
+    communityShare: 0.7
+    applyStrategy: public
+  transfer:
+    source: "National Student Clearinghouse, Tracking Transfer 2023: about a third of community college entrants transfer to a four-year college (memory)"
+    minCredits: 45
+    minGpa: 2.3
+    tiers: [public_regional, public_flagship]
+
+paying:
+  # What parents put toward a year of college: a share of income above a floor, scaled by how much
+  # they are willing to give.
+  parents:
+    source: "Sallie Mae, How America Pays for College 2024: parent income and savings cover about half of costs on average (memory)"
+    incomeFloor: 38000
+    shareAboveFloor: 0.14
+    willingnessSd: 0.35
+    willingnessPerEducationStep: 0.06
+  loans:
+    source: "Federal Student Aid: Direct Loan annual limits for dependent undergraduates, 2024–25"
+    byYear: [5500, 6500, 7500, 7500, 7500, 7500]
+    aggregate: 31000
+    # A student with at least this much left to cover takes the full loan offered for the year,
+    # as most borrowers do; below it they get by without borrowing.
+    borrowIfGapAbove: 5500
+  # Earnings from a part-time job that go toward costs before any need is left unmet.
+  ownEarnings: 3500
+
+# How a pupil and family choose where to apply and whether to go, for people the player does not
+# control. `aspiration` is a z-like score from the weights; strategy and enrollment follow it.
+choices:
+  source: "Calibrated to NCES Digest 2023, Table 302.10: 62.0% of 2022 graduates enrolled right away, 45.1% at 4-year and 16.9% at 2-year colleges"
+  aspiration: { base: 0.4, gpa: 0.85, parentEducation: 0.45, income: 0.3, noise: 0.6 }
+  strategy:
+    none: { base: 0.15, aspiration: -1.3 }
+    local: { base: 0.2, aspiration: -0.45 }
+    public: { base: 0.75, aspiration: 0.55 }
+    broad: { base: -0.55, aspiration: 1.0 }
+    reach: { base: -2.2, aspiration: 1.7 }
+  enroll:
+    fourYear: 0.9
+    prestige: 0.45
+    aspiration: 0.6
+    costPer5000: -0.28
+    community: 0.2
+    none: -0.2
+    noneAspiration: -1.1
+  takeTest: { base: 0.3, aspiration: 1.2 }

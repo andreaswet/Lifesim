@@ -1,0 +1,101 @@
+# Who a child is born to: the joint picture of US births, drawn in this order: mother's education,
+# her age given her education, partnership given her education, birth order, then the father.
+#
+# Figures marked (memory) were written from memory of the cited publication and are pinned when
+# the natality files are added; the batch tool checks the population they produce.
+
+motherEducation:
+  source: "NCHS, Births: Final Data for 2022, educational attainment of mother (memory)"
+  shares: { less_than_hs: 0.116, high_school: 0.261, some_college: 0.187, associate: 0.080, bachelor: 0.218, graduate: 0.138 }
+
+# Age at this birth, normal around a mean that rises with education, within what the education
+# allows. The mix reproduces a mean age at birth of about 29.6 (NCHS 2023).
+motherAge:
+  source: "NCHS, Births: Final Data for 2023, age of mother (memory)"
+  sd: 5.6
+  min: 15
+  max: 46
+  byEducation:
+    less_than_hs: { mean: 25.5, min: 15 }
+    high_school: { mean: 27.0, min: 17 }
+    some_college: { mean: 28.5, min: 18 }
+    associate: { mean: 29.5, min: 20 }
+    bachelor: { mean: 31.5, min: 22 }
+    graduate: { mean: 33.5, min: 24 }
+
+partnership:
+  source: "NCHS, Births: Final Data for 2022, births to unmarried women by education (memory); cohabiting share from NSFG 2015–2019 (memory)"
+  # Share of births to unmarried mothers. Overall this gives about 39%.
+  unmarriedByEducation: { less_than_hs: 0.66, high_school: 0.57, some_college: 0.46, associate: 0.38, bachelor: 0.13, graduate: 0.08 }
+  # Of unmarried mothers, the share living with the father at the birth.
+  cohabitingShareOfUnmarried: 0.58
+
+birthOrder:
+  source: "NCHS, Births: Final Data for 2023, live-birth order (memory)"
+  # First, second, third, fourth, fifth or later.
+  shares: [0.39, 0.32, 0.17, 0.075, 0.045]
+  # Years between a child and the next older one.
+  spacingYears: [1.5, 5]
+
+father:
+  source: "Census, America's Families and Living Arrangements; educational homogamy from Schwartz & Mare 2005 (memory)"
+  ageGap: { mean: 2.3, sd: 4.0 }
+  minAge: 16
+  # Chance he has the same education as the mother, or one step away; otherwise drawn afresh.
+  sameEducation: 0.5
+  adjacentEducation: 0.33
+
+# Parents who live together separating, per year. Calibrated in the batch tool so that about two
+# thirds of children under 18 live with both parents (Census CPS 2023: 65% with two married
+# parents, 71% with two parents of any kind; the simulation has no step-parents yet).
+separation:
+  source: "calibrated to Census CPS 2023, Table C3 (living arrangements of children)"
+  perYear: { married: 0.012, cohabiting: 0.058 }
+  # Multipliers on the yearly rate.
+  eitherParentUnemployed: 1.6
+  motherUnder25AtBirth: 1.4
+  # Where the children live afterwards.
+  childrenStayWithMother: 0.82
+
+# Whether there will be another child after this one, by how many the mother now has, and when.
+furtherBirth:
+  source: "Parity progression consistent with completed family sizes in Census CPS Fertility Supplement 2022 (memory)"
+  probabilityByParity: [0.80, 0.48, 0.36, 0.30]
+  gapMonths: [18, 72]
+  maxMotherAge: 45
+  # If the parents separate first, the chance the planned birth still happens.
+  afterSeparation: 0.35
+
+# How a parent's schooling, traits and circumstances become what they give a child. Each is a
+# z-score built from the listed weights; the batch tool reports their spread.
+parenting:
+  source: "Design parameters; relative sizes follow Davis-Kean 2005 and Conger & Donnellan 2007"
+  involvement: { education: 0.45, conscientiousness: 0.25, agreeableness: 0.15, fullTimeWork: -0.15, unemployed: -0.10, loneParent: -0.35 }
+  # The household's support for learning. `scale` is the spread of the weighted sum in the
+  # simulated population, so that the result is a z-score.
+  homeSupport: { parentEducation: 0.40, income: 0.25, involvement: 0.35, scale: 0.68 }
+
+# Cognitive aptitude and personality: shares of variance.
+inheritance:
+  source: "Polderman et al. 2015 meta-analysis of twin studies; shared environment for childhood cognitive ability from Plomin & Deary 2015"
+  aptitude: { genes: 0.50, family: 0.10 }
+  personality: { genes: 0.42 }
+  # How much of an aptitude is the general factor rather than specific to that aptitude.
+  generalFactor: 0.8
+  # Mean aptitude (z) of adults by schooling, used to give parents genes consistent with their education.
+  aptitudeByEducation: { less_than_hs: -0.65, high_school: -0.27, some_college: 0.0, associate: 0.08, bachelor: 0.45, graduate: 0.75 }
+  conscientiousnessByEducation: { less_than_hs: -0.35, high_school: -0.12, some_college: 0.0, associate: 0.08, bachelor: 0.2, graduate: 0.3 }
+
+neighborhood:
+  source: "Design parameters; income sorting between neighborhoods from Reardon & Bischoff 2011"
+  # Neighborhood income tier (1–5) follows family income loosely.
+  incomeWeight: 0.65
+  # School quality (z) rises with the tier, with wide overlap.
+  schoolQualityPerTier: 0.4
+  schoolQualityNoise: 0.6
+
+# HHS poverty guidelines 2025, contiguous states: first person, each additional person.
+poverty:
+  source: "HHS Poverty Guidelines 2025"
+  base: 15650
+  perAdditional: 5500

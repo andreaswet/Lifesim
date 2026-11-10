@@ -69,7 +69,7 @@ describe('narrative', () => {
         expect(why.lines[0]).toBe('About one person in 13 gets the flu in an average year.')
         const month = (entry.month % 12) + 1
         const inSeason = month === 12 || month <= 3
-        expect(why.lines.includes('It was more likely because it was flu season.')).toBe(inSeason)
+        expect(why.lines.includes('In your case it was more likely, because it was flu season.')).toBe(inSeason)
         explainedSeason ||= inSeason
       }
     }

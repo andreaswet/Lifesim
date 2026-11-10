@@ -10,6 +10,7 @@ import { ageInYears, monthName, yearOf } from '../engine/core/time'
 import type { Narration, Narrator } from '../engine/context'
 import type { CText, Prepared } from '../engine/content/prepare'
 import type { Fact, GameState, Person, Scalar } from '../engine/state'
+import { siblingsOf } from '../engine/people'
 import { makeEnv } from '../engine/views'
 
 /** Months after which a used variant is as welcome again as any other. */
@@ -95,6 +96,39 @@ function join(parts: Array<Picked | null>): Narration | null {
   return { text: kept.map((p) => p.text).join(' '), variants: kept.map((p) => p.key) }
 }
 
+/** "a", "a and b", "a, b and c". */
+function joinList(items: string[]): string {
+  if (items.length <= 1) return items[0] ?? ''
+  return `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`
+}
+
+/** The lines after the birth: who the parents are, who else is in the house, how they live. */
+function familyIntro(fact: Fact, subject: Person, state: GameState, content: Prepared, rng: KeyedRng): Narration | null {
+  const older = siblingsOf(state, subject).filter((s) => s.born < subject.born && !s.died)
+  const items: string[] = []
+  const keys: string[] = []
+  for (const sibling of older) {
+    const env = makeEnv(state, content, subject, { fact: { who: sibling.id } })
+    const item = pick(byId(content, 'family.intro.sibling_item'), env, state, rng, `family.intro.sibling_item:${sibling.id}`, subject.id)
+    if (item) {
+      items.push(item.text)
+      keys.push(item.key)
+    }
+  }
+  const only = older.length === 1 ? older[0]! : null
+  const data: Record<string, Scalar> = { ...fact.data, count: older.length, list: joinList(items), word: only ? (only.sex === 'male' ? 'brother' : 'sister') : '' }
+  const env = makeEnv(state, content, subject, { fact: data })
+  const parts = ['family.intro.parents', 'family.intro.siblings', 'family.intro.work'].map((id) => pick(byId(content, id), env, state, rng, id, subject.id))
+  const joined = join(parts)
+  return joined ? { text: joined.text, variants: [...joined.variants, ...keys] } : null
+}
+
+/** A passage from the years before memory: who looks after you, and what the house is like. */
+function earlyChapter(fact: Fact, subject: Person, state: GameState, content: Prepared, rng: KeyedRng): Narration | null {
+  const env = makeEnv(state, content, subject, { fact: fact.data })
+  return join(['early.care', 'early.home'].map((id) => pick(byId(content, id), env, state, rng, id, subject.id)))
+}
+
 function yearSummary(fact: Fact, subject: Person, state: GameState, content: Prepared, rng: KeyedRng): Narration | null {
   const d = fact.data
   const factor = typeof d.cause === 'string' ? content.factors.get(d.cause) : undefined
@@ -125,9 +159,14 @@ function obituary(fact: Fact, subject: Person, state: GameState, content: Prepar
     diedMonth: monthName(state.now),
     diedYear: yearOf(state.now),
     mainActivity: mainActivity(state, subject),
+    siblings: siblingsOf(state, subject).length,
+    level: subject.education.level,
+    schooled: subject.education.status !== 'not_modeled',
   }
   const env = makeEnv(state, content, subject, { fact: data })
-  const parts: Array<Picked | null> = [pick(byId(content, 'obituary.opening'), env, state, rng, 'obituary.opening', subject.id)]
+  const one = (id: string): Picked | null => pick(byId(content, id), env, state, rng, id, subject.id)
+  const parts: Array<Picked | null> = [one('obituary.opening'), one('obituary.family')]
+  if (age >= 25) parts.push(one('obituary.school'))
   // Thirty is roughly where a life has enough adult years for a habit to describe it.
   if (age >= 30) parts.push(pick(byId(content, 'obituary.activity'), env, state, rng, 'obituary.activity', subject.id))
   return join(parts)
@@ -140,6 +179,8 @@ export function createNarrator(): Narrator {
       if (!subject) return null
       if (fact.kind === 'year_summary') return yearSummary(fact, subject, state, content, rng)
       if (fact.kind === 'obituary') return obituary(fact, subject, state, content, rng)
+      if (fact.kind === 'family_intro') return familyIntro(fact, subject, state, content, rng)
+      if (fact.kind === 'early_chapter') return earlyChapter(fact, subject, state, content, rng)
       const texts = content.textByFact.get(fact.kind)
       if (!texts) return null
       const env = makeEnv(state, content, subject, { fact: fact.data })

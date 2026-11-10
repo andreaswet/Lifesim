@@ -7,6 +7,7 @@
 import type { Prepared } from './content/prepare'
 import { STOCK_IDS } from './content/schema'
 import type { GameState } from './state'
+import { systemDecisionExists } from './systems/decisions'
 
 export function checkInvariants(state: GameState, content: Prepared): string[] {
   const problems: string[] = []
@@ -32,6 +33,45 @@ export function checkInvariants(state: GameState, content: Prepared): string[] {
     if (person.died && !state.outcomes[person.died.outcomeId]) fail(`${person.id} died with no recorded outcome`)
   }
 
+  for (const person of Object.values(state.people)) {
+    // No parent is younger than their child, or anywhere near it.
+    for (const parentId of [person.motherId, person.fatherId]) {
+      if (parentId === null) continue
+      const parent = state.people[parentId]
+      if (!parent) fail(`${person.id} has a parent who does not exist`)
+      else if (person.born - parent.born < 13 * 12) fail(`${parentId} was under 13 when ${person.id} was born`)
+    }
+    if (person.died) {
+      if (person.householdId !== null) fail(`${person.id} has died but still belongs to a household`)
+      if (person.partner !== null) fail(`${person.id} has died but still has a partner`)
+    } else {
+      const home = person.householdId ? state.households[person.householdId] : undefined
+      if (!home) fail(`${person.id} has no household`)
+      else if (!home.members.includes(person.id)) fail(`${person.id} is not listed in their own household`)
+      if (person.partner) {
+        const other = state.people[person.partner.id]
+        if (!other || other.partner?.id !== person.id) fail(`${person.id}'s partnership is one-sided`)
+        else if (other.died) fail(`${person.id} is partnered with someone who has died`)
+      }
+    }
+    const edu = person.education
+    if ((edu.status === 'k12') !== (edu.grade !== null)) fail(`${person.id} school status and grade disagree`)
+    if ((edu.status === 'college') !== (edu.college !== null)) fail(`${person.id} college status and record disagree`)
+    if (edu.loans < 0 || !(person.strain >= 0 && person.strain <= 1) || !(edu.disengagement >= 0 && edu.disengagement <= 1)) fail(`${person.id} has an out-of-range school value`)
+    for (const skill in person.skills) if (!(person.skills[skill]! > -6 && person.skills[skill]! < 40)) fail(`${person.id} skill ${skill} is out of range`)
+  }
+  for (const home of Object.values(state.households)) {
+    const seen = new Set<string>()
+    for (const id of home.members) {
+      if (seen.has(id)) fail(`household ${home.id} lists ${id} twice`)
+      seen.add(id)
+      const member = state.people[id]
+      if (!member) fail(`household ${home.id} has a member who does not exist`)
+      else if (member.householdId !== home.id) fail(`household ${home.id} lists ${id}, who lives elsewhere`)
+    }
+    if (!(home.income >= 0)) fail(`household ${home.id} has negative income`)
+  }
+
   for (const proc of Object.values(state.processes)) {
     const subject = state.people[proc.subjectId]
     if (!subject) fail(`process ${proc.id} has no subject`)
@@ -46,9 +86,14 @@ export function checkInvariants(state: GameState, content: Prepared): string[] {
     const subject = state.people[decision.subjectId]
     if (!subject) fail(`decision ${decision.id} has no subject`)
     else if (subject.died) fail(`decision ${decision.id} is open for someone who has died`)
-    const spec = content.eventById.get(decision.eventId)?.decision
-    if (!spec) fail(`decision ${decision.id} refers to an event with no decision`)
-    else if (decision.options.some((o) => !spec.options.some((s) => s.id === o.id))) fail(`decision ${decision.id} has an option its event does not define`)
+    if (decision.source.startsWith('event:')) {
+      const spec = content.eventById.get(decision.source.slice(6))?.decision
+      if (!spec) fail(`decision ${decision.id} refers to an event with no decision`)
+      else if (decision.options.some((o) => !spec.options.some((s) => s.id === o.id))) fail(`decision ${decision.id} has an option its event does not define`)
+    } else if (!decision.source.startsWith('system:') || !systemDecisionExists(decision.source.slice(7))) {
+      fail(`decision ${decision.id} has an unknown source '${decision.source}'`)
+    }
+    if (decision.options.length < 2) fail(`decision ${decision.id} offers no real choice`)
     if (decision.deadline !== null && decision.deadline < decision.opened) fail(`decision ${decision.id} was due before it opened`)
   }
 

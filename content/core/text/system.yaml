@@ -9,6 +9,28 @@
     - when: "fact.age >= 2"
       text: "{self.name}, born in {fact.bornMonth} {fact.bornYear}, died in {fact.diedMonth} {fact.diedYear} at the age of {fact.age}."
 
+- id: obituary.family
+  variants:
+    - when: "mother != null && father != null && fact.siblings == 0"
+      text: "{fact.He} was the only child of {mother.first} and {father.first} {father.family}, and grew up in {home.place}."
+    - when: "mother != null && father != null && fact.siblings > 0 && self.olderSiblings == 0"
+      text: "{fact.He} was the eldest of {num(fact.siblings + 1)} children of {mother.first} and {father.first} {father.family}, and grew up in {home.place}."
+    - when: "mother != null && father != null && fact.siblings > 0 && self.olderSiblings > 0"
+      text: "{fact.He} was one of {num(fact.siblings + 1)} children of {mother.first} and {father.first} {father.family}, and grew up in {home.place}."
+
+- id: obituary.school
+  variants:
+    - when: "fact.schooled && fact.level == 'less_than_hs'"
+      text: "{fact.He} left school without a diploma."
+    - when: "fact.schooled && fact.level == 'high_school'"
+      text: "{fact.He} finished high school and did not go further."
+    - when: "fact.schooled && fact.level == 'some_college'"
+      text: "{fact.He} started college and did not finish."
+    - when: "fact.schooled && fact.level == 'associate'"
+      text: "{fact.He} held an associate degree."
+    - when: "fact.schooled && (fact.level == 'bachelor' || fact.level == 'graduate')"
+      text: "{fact.He} was a college graduate."
+
 - id: obituary.activity
   variants:
     - when: "fact.mainActivity == 'sedentary'"
@@ -38,6 +60,14 @@
     - when: "fact.age >= 1"
       text: "At {fact.age}, about one {fact.person} in {fact.oneIn} dies within a year."
 
+- id: why.admission
+  variants:
+    - text: "{cap(fact.share)} applicants with an average record are admitted to a {fact.label}."
+
+- id: why.equivalency
+  variants:
+    - text: "About seven in ten people who sit the equivalency exam pass it."
+
 # Milestone 1 only: mortality depends on nothing but age and sex. Removed when health arrives.
 - id: why.death_table_only
   variants:
@@ -45,11 +75,11 @@
 
 - id: why.more
   variants:
-    - text: "It was more likely because {fact.phrase}."
+    - text: "In your case it was more likely, because {fact.phrase}."
 
 - id: why.less
   variants:
-    - text: "It was less likely because {fact.phrase}."
+    - text: "In your case it was less likely, because {fact.phrase}."
 
 - id: why.hidden
   variants:

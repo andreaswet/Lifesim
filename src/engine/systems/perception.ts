@@ -26,6 +26,8 @@ export const DESCRIPTOR_VALUES: Record<string, (state: GameState, content: Prepa
     const age = (state.now - person.born) / 12
     return age < GROWN_AGE ? person.body.cardio / content.envelope('cardio', age) : person.body.cardio / content.envelope('cardio', GROWN_AGE)
   },
+  /** The cost of asking more hours of a week than it has. */
+  strain: (_state, _content, person) => person.strain,
   strength: (state, content, person) => {
     const envelope = content.envelope('strength', (state.now - person.born) / 12)
     return envelope > 0 ? person.body.strength / envelope : 0

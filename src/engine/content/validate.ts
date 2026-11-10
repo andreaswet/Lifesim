@@ -6,6 +6,8 @@
 
 import { compileExpr, compileTemplate, type Expr } from '../core/expr'
 import { COMPOSED_FACTS, ENGINE_FACTS, REQUIRED_TEXT_IDS } from '../facts'
+import '../country' // registers each country's hooks, actions and decisions
+import { hookNames } from '../systems/actions'
 import { DESCRIPTOR_VALUES } from '../systems/perception'
 import { ACCESSOR_PATHS, FUNCTION_NAMES } from '../views'
 import { STOCK_IDS, type ContentBundle, type Effect, type FactSpec } from './schema'
@@ -31,6 +33,7 @@ export function validateContent(bundle: ContentBundle): string[] {
   const processIds = new Set(bundle.processes.map((p) => p.id))
   const textIds = new Set(bundle.text.map((t) => t.id))
   const activityIds = new Set(bundle.body.activityLevels.map((a) => a.id))
+  const studyIds = new Set(bundle.country.education.k12.study.levels.map((l) => l.id))
 
   // Fields provided by each fact kind, gathered from the engine and from every content emitter.
   const factFields = new Map<string, Set<string>>()
@@ -81,11 +84,15 @@ export function validateContent(bundle: ContentBundle): string[] {
         checkExpr(where, effect.adjust.delta, scopes)
         if (!factorIds.has(effect.adjust.cause)) fail(where, `cause '${effect.adjust.cause}' is not in factors`)
       } else if ('setPolicy' in effect) {
-        if (!activityIds.has(effect.setPolicy.activity)) fail(where, `unknown activity level '${effect.setPolicy.activity}'`)
+        const { activity, study } = effect.setPolicy
+        if (activity !== undefined && !activityIds.has(activity)) fail(where, `unknown activity level '${activity}'`)
+        if (study !== undefined && !studyIds.has(study)) fail(where, `unknown study level '${study}'`)
       } else if ('setFlag' in effect) {
         checkExpr(where, effect.setFlag.value, scopes)
       } else if ('startProcess' in effect) {
         if (!processIds.has(effect.startProcess)) fail(where, `unknown process '${effect.startProcess}'`)
+      } else if ('run' in effect) {
+        if (!hookNames().includes(effect.run)) fail(where, `unknown hook '${effect.run}'`)
       } else {
         checkFact(where, effect.emit, scopes)
       }

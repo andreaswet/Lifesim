@@ -1,9 +1,9 @@
 - id: life.birth
   fact: birth
   variants:
-    - text: "You are born on {fact.month} {fact.day}, {fact.year}."
-    - text: "{fact.month} {fact.day}, {fact.year}. You are born. For now the world is light, noise and being held."
-    - text: "You are born in the United States on {fact.month} {fact.day}, {fact.year}, one of about three and a half million Americans who will share your birth year."
+    - text: "You are born on {fact.month} {fact.day}, {fact.year}, in {fact.place}."
+    - text: "{fact.month} {fact.day}, {fact.year}, {fact.place}. You are born. For now the world is light, noise and being held."
+    - text: "You are born in {fact.place} on {fact.month} {fact.day}, {fact.year}, one of about three and a half million Americans who will share your birth year."
 
 - id: life.first_steps
   fact: milestone
@@ -12,14 +12,6 @@
     - text: "You let go of the edge of the sofa and take four steps before sitting down hard."
     - text: "You walk. Not far, and not for long, but on your own."
     - text: "{cap(num(self.ageMonths))} months old, you take your first steps across the kitchen floor."
-
-- id: life.school_start
-  fact: milestone
-  when: "fact.which == 'school_start'"
-  variants:
-    - text: "September. You start kindergarten, with a backpack that reaches the backs of your knees."
-    - text: "Your first day of kindergarten. You learn where your hook is, and that there are rules about the carpet."
-    - text: "School begins this September. The building is the biggest you have ever been inside."
 
 - id: life.adult
   fact: milestone

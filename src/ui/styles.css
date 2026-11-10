@@ -64,9 +64,27 @@ p {
 }
 
 button,
-input {
+input,
+select {
   font: inherit;
   color: inherit;
+}
+
+select {
+  width: 100%;
+  min-height: 2.5rem;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: var(--surface);
+}
+
+h3 {
+  margin: 0.3rem 0 0;
+  font: 600 0.85rem var(--sans);
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 button,
@@ -521,6 +539,71 @@ code {
   font-family: var(--mono);
   font-size: 0.9em;
   word-break: break-all;
+}
+
+.lead {
+  font: 1.05rem/1.4 var(--serif);
+}
+
+.people {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.people li {
+  display: grid;
+  gap: 0.05rem;
+}
+
+.people .meta {
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.record {
+  margin: 0;
+  display: grid;
+  gap: 0.25rem;
+}
+
+.record div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  border-bottom: 1px dotted var(--rule);
+  padding-bottom: 0.2rem;
+}
+
+.record dt {
+  color: var(--muted);
+}
+
+.record dd {
+  margin: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.acts {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.acts > button {
+  justify-content: space-between;
+  flex-wrap: wrap;
+  text-align: left;
+}
+
+.confirm {
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  display: grid;
+  gap: 0.6rem;
 }
 
 /* Action bar */

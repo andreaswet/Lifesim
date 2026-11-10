@@ -14,13 +14,6 @@
       asOf: 2006
   fact: { kind: milestone, data: { which: "'first_steps'", age: self.age }, significant: true }
 
-- id: milestone.school_start
-  sourceClass: structural
-  stages: [early, childhood]
-  when: "self.age >= 5 && world.month == 9"
-  once: true
-  fact: { kind: milestone, data: { which: "'school_start'", age: self.age }, significant: true }
-
 - id: milestone.adult
   sourceClass: structural
   stages: [early_adulthood]

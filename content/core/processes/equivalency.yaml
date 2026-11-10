@@ -1,0 +1,10 @@
+# Studying for the high-school equivalency exam: four months of evenings, then the test itself,
+# which the engine decides from where the person stood when they left school.
+- id: equivalency
+  stages:
+    - id: studying
+      status: Studying for the equivalency exam
+      duration: { months: [4, 4] }
+      onExit:
+        - run: edu.sit_equivalency
+      next: end

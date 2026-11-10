@@ -13,8 +13,65 @@ export class SaveError extends Error {}
 
 export type Migration = (state: Record<string, unknown>) => Record<string, unknown>
 
-/** Keyed by the version migrated *from*. Empty while there is only one version. */
-export const MIGRATIONS: Record<number, Migration> = {}
+type Loose = Record<string, unknown>
+
+/**
+ * Version 1 → 2 (Milestone 2). Families, households, inherited traits and schooling were added.
+ * A version 1 life has none of these and they cannot be invented after the fact, so the person
+ * is carried over as someone whose family is unknown and whose schooling is not modeled: they
+ * keep their body, their history and their log, and can be played on to the end.
+ */
+function migrate1to2(state: Loose): Loose {
+  const people = state.people as Record<string, Loose>
+  const now = state.now as number
+  for (const person of Object.values(people)) {
+    const adult = (now - (person.born as number)) / 12 >= 18
+    Object.assign(person, {
+      motherId: null,
+      fatherId: null,
+      partner: null,
+      householdId: person.died ? null : 'h1',
+      genes: {},
+      aptitudes: {},
+      traits: {},
+      skills: {},
+      strain: 0,
+      policies: { ...(person.policies as Loose), study: 'steady' },
+      education: {
+        status: 'not_modeled',
+        level: adult ? 'high_school' : 'less_than_hs',
+        grade: null,
+        school: null,
+        courseLevel: 'regular',
+        lastReport: null,
+        hs: { gpaSum: 0, years: 0, rigorSum: 0 },
+        standing: 0,
+        test: null,
+        disengagement: 0,
+        applications: [],
+        plan: null,
+        college: null,
+        loans: 0,
+      },
+      work: null,
+      nextBirth: null,
+    })
+  }
+  const living = Object.values(people).filter((p) => !p.died).map((p) => p.id as string)
+  const decisions = (state.decisions as Loose[]).map(({ eventId, ...rest }) => ({ ...rest, source: `event:${String(eventId)}`, optional: true }))
+  return {
+    ...state,
+    people,
+    decisions,
+    households: {
+      h1: { id: 'h1', members: living, state: 'unknown', neighborhood: 3, income: 0, disruption: 0, collegeWillingness: 1, schools: { elementary: '', middle: '', high: '', quality: 0 } },
+    },
+    meta: { ...(state.meta as Loose), schemaVersion: 2 },
+  }
+}
+
+/** Keyed by the version migrated *from*. */
+export const MIGRATIONS: Record<number, Migration> = { 1: migrate1to2 }
 
 export function exportSave(state: GameState): string {
   return JSON.stringify({ format: SAVE_FORMAT, schemaVersion: state.meta.schemaVersion, savedWith: ENGINE_VERSION, state })
