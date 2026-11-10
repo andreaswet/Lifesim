@@ -10,6 +10,12 @@ your own, friends and partners do not exist yet, so adult life is still quiet.
 - [Design document](docs/DESIGN.md) — what is being built and why.
 - [Calibration](docs/CALIBRATION.md) — how the simulation compares with real US statistics so far.
 
+## Playing it
+
+The latest version on `main` is published at <https://andreaswet.github.io/Lifesim/> by the
+Deploy workflow, which runs the tests and builds the site on every push to `main`. Everything
+runs in the browser; lives are saved in the browser's own storage and nowhere else.
+
 ## Running it
 
 Requires Node 22 or later.
