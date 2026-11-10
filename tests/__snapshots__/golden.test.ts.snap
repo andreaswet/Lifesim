@@ -14,7 +14,7 @@ exports[`golden lives > golden-ada (persona) 1`] = `
   "logEntries": 104,
   "name": "James Miller",
   "sex": "male",
-  "simulation": "71c087db6e9061c2",
+  "simulation": "3ab6a168bc9f0719",
 }
 `;
 
@@ -32,7 +32,7 @@ exports[`golden lives > golden-ben (active) 1`] = `
   "logEntries": 119,
   "name": "Sebastian Perez",
   "sex": "male",
-  "simulation": "773e2878dfbd9e79",
+  "simulation": "214d5fe5747ced99",
 }
 `;
 
@@ -50,7 +50,7 @@ exports[`golden lives > golden-cyd (sedentary) 1`] = `
   "logEntries": 135,
   "name": "Scarlett Hall",
   "sex": "female",
-  "simulation": "7370a60850284e7c",
+  "simulation": "52850acf0897cb80",
 }
 `;
 
@@ -68,6 +68,6 @@ exports[`golden lives > golden-dot (random) 1`] = `
   "logEntries": 140,
   "name": "Harper Davis",
   "sex": "female",
-  "simulation": "a92a704792ee4d5f",
+  "simulation": "5cfa92349fa7d82b",
 }
 `;

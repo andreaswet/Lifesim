@@ -1,17 +1,22 @@
 /**
  * Batch simulation from the command line.
  *
- *   npm run batch -- --lives 5000 --seed cal1 --strategy persona [--no-text] [--out reports]
+ *   npm run batch -- --lives 5000 --seed cal1 --strategy persona [--no-text] [--workers 4] [--out reports]
  *
- * Prints a comparison with the calibration targets and writes the full summary as JSON.
+ * Prints a comparison with the calibration targets and writes the full summary as JSON. The
+ * result depends only on the seed, the strategy and the number of lives, never on how many
+ * workers shared the work.
  */
 
 import { mkdirSync, writeFileSync } from 'node:fs'
+import { availableParallelism } from 'node:os'
 import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { Worker, isMainThread, parentPort, workerData } from 'node:worker_threads'
 import { loadContent } from '../content/load-node'
 import { prepareContent } from '../engine'
 import { createNarrator } from '../narrative'
-import { runBatch, summarize, SURVIVAL_AGES } from './batch-lib'
+import { runBatch, summarize, SURVIVAL_AGES, type BatchOptions, type LifeResult } from './batch-lib'
 import { STRATEGIES, type Strategy } from './players'
 
 function arg(name: string, fallback: string): string {
@@ -19,22 +24,53 @@ function arg(name: string, fallback: string): string {
   return i >= 0 && process.argv[i + 1] ? process.argv[i + 1]! : fallback
 }
 
+interface WorkerJob {
+  options: BatchOptions
+  withText: boolean
+}
+
+if (!isMainThread) {
+  const job = workerData as WorkerJob
+  const content = prepareContent(loadContent())
+  parentPort!.postMessage(runBatch(job.options, { content, narrator: job.withText ? createNarrator() : null }))
+  process.exit(0)
+}
+
 const lives = Number(arg('lives', '2000'))
 const seed = arg('seed', 'batch')
 const strategy = arg('strategy', 'persona') as Strategy | 'mixed'
 if (strategy !== 'mixed' && !STRATEGIES.includes(strategy)) throw new Error(`Unknown strategy '${strategy}'. Use one of: ${STRATEGIES.join(', ')}, mixed`)
 const withText = !process.argv.includes('--no-text')
+const workers = Math.max(1, Math.min(Number(arg('workers', String(Math.min(8, availableParallelism())))), Math.ceil(lives / 50)))
 
 const content = prepareContent(loadContent())
 const started = performance.now()
-const results = runBatch({ lives, seed, strategy }, { content, narrator: withText ? createNarrator() : null })
+
+// Lives are split into contiguous index ranges; the mixed strategy is assigned by index, so each
+// life is the same whichever worker runs it.
+const share = Math.ceil(lives / workers)
+const jobs: Array<Promise<LifeResult[]>> = []
+for (let w = 0; w < workers; w++) {
+  const from = w * share
+  const count = Math.min(share, lives - from)
+  if (count <= 0) break
+  const job: WorkerJob = { options: { lives: count, seed, strategy, from }, withText }
+  jobs.push(
+    new Promise((resolve, reject) => {
+      const worker = new Worker(fileURLToPath(import.meta.url), { workerData: job, execArgv: process.execArgv })
+      worker.once('message', resolve)
+      worker.once('error', reject)
+    }),
+  )
+}
+const results = (await Promise.all(jobs)).flat()
 const elapsed = performance.now() - started
 const s = summarize(results, content, elapsed)
 
 const pct = (x: number): string => `${(100 * x).toFixed(1)}%`
 const lines: string[] = []
 lines.push(`Batch: ${lives} lives, seed "${seed}", strategy ${strategy}, content ${content.bundle.hash}, text ${withText ? 'on' : 'off'}`)
-lines.push(`Time: ${(elapsed / 1000).toFixed(1)} s, ${s.msPerSimulatedYear.toFixed(3)} ms per simulated year`)
+lines.push(`Time: ${(elapsed / 1000).toFixed(1)} s on ${jobs.length} worker${jobs.length === 1 ? '' : 's'}; ${((s.msPerSimulatedYear * jobs.length)).toFixed(3)} ms of computing per simulated year`)
 lines.push('')
 lines.push('Life expectancy at birth (years)        simulated ± SE     life table')
 for (const sex of ['male', 'female'] as const) {

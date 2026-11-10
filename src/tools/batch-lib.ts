@@ -216,10 +216,19 @@ export function summarize(results: LifeResult[], content: Prepared, elapsedMs: n
   }
 }
 
-export function runBatch(options: { lives: number; seed: string; strategy: Strategy | 'mixed' }, env: EngineEnv): LifeResult[] {
+export interface BatchOptions {
+  lives: number
+  seed: string
+  strategy: Strategy | 'mixed'
+  /** Index of the first life; lets several workers share one batch. Life i always has seed `${seed}-${i}`. */
+  from?: number
+}
+
+export function runBatch(options: BatchOptions, env: EngineEnv): LifeResult[] {
   const mixed: Strategy[] = ['persona', 'persona', 'persona', 'persona', 'persona', 'persona', 'active', 'sedentary', 'random', 'random']
   const results: LifeResult[] = []
-  for (let i = 0; i < options.lives; i++) {
+  const from = options.from ?? 0
+  for (let i = from; i < from + options.lives; i++) {
     const strategy = options.strategy === 'mixed' ? mixed[i % mixed.length]! : options.strategy
     results.push(runLife(`${options.seed}-${i}`, strategy, env))
   }
