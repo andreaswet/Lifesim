@@ -12,8 +12,8 @@ import type { CText, Prepared } from '../engine/content/prepare'
 import type { Fact, GameState, Person, Scalar } from '../engine/state'
 import { makeEnv } from '../engine/views'
 
-/** Months within which a variant that was just used is avoided when others are equally fresh. */
-const RECENT_MONTHS = 60
+/** Months after which a used variant is as welcome again as any other. */
+const RECENT_MONTHS = 96
 
 interface Picked {
   text: string
@@ -25,8 +25,8 @@ interface Picked {
  *  1. fallback variants are considered only if nothing else matches;
  *  2. of the rest, only those used least often in this life stay in, so every eligible variant is
  *     used once before any is used twice;
- *  3. among those, variants with a condition are more specific and are preferred, and one used
- *     recently is avoided.
+ *  3. among those, variants with a condition are more specific and are preferred, and the more
+ *     recently one was used the less likely it is.
  */
 function pick(texts: readonly CText[], env: Env, state: GameState, rng: KeyedRng, salt: string, subjectId: string): Picked | null {
   interface Candidate {
@@ -43,9 +43,11 @@ function pick(texts: readonly CText[], env: Env, state: GameState, rng: KeyedRng
     text.variants.forEach((variant, index) => {
       if (variant.when && !evalBool(variant.when, env)) return
       const key = `${text.id}#${index}`
+      // The longer ago a variant was last used, the more welcome it is: squared, so that one used
+      // last year is almost never chosen over one used five years ago.
       const last = state.narration.lastUsed[key]
-      const recent = last !== undefined && state.now - last < RECENT_MONTHS
-      candidates.push({ text, index, key, uses: state.narration.counts[key] ?? 0, fallback: variant.fallback, weight: variant.weight * (variant.when ? 3 : 1) * (recent ? 0.05 : 1) })
+      const rest = last === undefined ? 1 : Math.min(1, (state.now - last) / RECENT_MONTHS)
+      candidates.push({ text, index, key, uses: state.narration.counts[key] ?? 0, fallback: variant.fallback, weight: variant.weight * (variant.when ? 3 : 1) * Math.max(0.001, rest * rest) })
     })
   }
   if (candidates.some((c) => !c.fallback)) candidates = candidates.filter((c) => !c.fallback)

@@ -5,9 +5,9 @@
   "type": "module",
   "description": "A deep, grounded, text-based life simulator.",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc --noEmit && vite build",
-    "preview": "vite preview",
+    "dev": "vite --configLoader bundle",
+    "build": "tsc --noEmit && vite build --configLoader bundle",
+    "preview": "vite preview --configLoader bundle",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",

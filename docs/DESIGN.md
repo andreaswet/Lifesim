@@ -1,15 +1,15 @@
 # Lifesim — Design Document
 
-**Status:** Draft 1, for review. No game code has been written.
+**Status:** Approved on 2026-11-10 with all twelve proposals in §1 accepted. Milestone 1 is built;
+see [CALIBRATION.md](CALIBRATION.md) for results so far.
 **Settings:** United States · born 2026, simulated forward · browser app in TypeScript, no backend · English.
 
-This document describes what will be built and why. It is meant to be argued with. Section 1 lists the
-decisions that are yours to make; everything else is a call I have made and recorded, and any of it
-can be reopened.
+This document describes what is being built and why. Section 1 records the decisions taken at
+review; §17 records the calls made along the way. Any of it can be reopened.
 
 ## Contents
 
-1. [Decisions I need from you](#1-decisions-i-need-from-you)
+1. [Decisions taken at review](#1-decisions-taken-at-review)
 2. [What version 1 is](#2-what-version-1-is)
 3. [Core modeling ideas](#3-core-modeling-ideas)
 4. [Architecture](#4-architecture)
@@ -31,12 +31,12 @@ can be reopened.
 
 ---
 
-## 1. Decisions I need from you
+## 1. Decisions taken at review
 
-These are scope, tone or major trade-off questions. Each has a proposed answer; if you say nothing
-about one, I will proceed with the proposal.
+These were the scope, tone and major trade-off questions put to the project owner. **All twelve
+proposed answers were accepted on 2026-11-10** and are now part of the design.
 
-| # | Question | Proposed answer | Why it is yours |
+| # | Question | Decision | Why it was the owner's call |
 |---|----------|-----------------|-----------------|
 | Q1 | **Race and ethnicity.** In the US they are among the strongest structural predictors of wealth, neighborhood, health and contact with the justice system. Do we model them? | Yes. Every person has a race/ethnicity attribute drawn from real birth data. Most of the disparity enters through **starting circumstances** (parental income and wealth, neighborhood, school quality), which are drawn from joint distributions that already contain it. On top of that, a small set of **documented direct effects** (hiring callback gaps, police stop and arrest rates, mortgage pricing) are data-driven modifiers with cited sources, and they appear in "Why?" in plain language. The player can pick or randomize. | Leaving it out makes the US model wrong in ways the calibration will show; putting it in is a tone commitment. |
 | Q2 | **Sex and gender effects.** Same question for the pay gap and the uneven division of care work. | Model the mechanisms rather than a flat penalty: occupation sorting, hours, career interruptions around childbirth, and the default housework and childcare split negotiated between partners. Add a small residual pay modifier only if the mechanisms alone miss the measured gap by a wide margin, and document it. Sex at birth, gender identity and sexual orientation are attributes of every person; orientation shapes the dating pool. | Same reason as Q1. |
@@ -189,53 +189,67 @@ information is enforced at the API boundary rather than left to UI discipline.
 
 ```
 src/
-  engine/          Pure TypeScript. No DOM, no Node APIs, no Date.now, no Math.random.
-    core/          rng, time, state types, cause ledger, scheduler, process runner, expression evaluator
-    systems/       economy, place, body, mind, skills, routine, wellbeing, people, relationships,
-                   family, education, work, money, health, law, events
-    policy/        decision policy for NPCs and AI players
-    perceive/      GameState → PlayerView
-    country/       CountryPack interface
-  narrative/       template engine, year summary, obituary, "Why?" phrasing
-  content/         authored data (YAML, CSV) plus zod schemas
-    core/          skills, traits, values, conditions, generic events, text
-    countries/us/  tables, rules, US events and text
-  ui/              Preact app. Imports only PlayerView types and the command API.
-  tools/           batch simulator, calibration report, content validator, replay, text statistics
-docs/              DESIGN.md, CALIBRATION.md (from Milestone 1)
+  engine/          Pure TypeScript. No DOM, no Node APIs, no clock, no Math.random. Depends only on zod.
+    core/          keyed rng, deterministic math, time, expression language
+    content/       content schemas, validator, preparation (expressions parsed, lookups indexed)
+    systems/       one file per system; Milestone 1 has body, mortality, processes, events,
+                   perception and the year summary
+    state.ts       the game state schema, from which its types and save validation both come
+    context.ts     adjustStock and emitFact: the two doors all state changes go through
+    engine.ts      createLife, step, tick, replay
+    view.ts        perceive: GameState → PlayerView
+    save.ts        export, import, migrations, state hashes
+    invariants.ts
+  narrative/       the narrator (templates → prose), year summary, obituary, "Why?" phrasing
+  content/         compiles the authored files into one validated bundle (used by tools and by Vite)
+  app/             the worker that hosts the engine in the browser, autosave, and the message protocol
+  ui/              Preact app. Imports only the app protocol: the player's view and the commands.
+  tools/           batch simulator, AI players, content validator, replay
+content/           authored data: YAML and CSV (see §12)
+tests/
+docs/              DESIGN.md, CALIBRATION.md
 ```
 
-Import boundaries are enforced by lint rules: `engine` imports nothing outside itself; `ui` cannot
-import `engine/systems` or raw state types.
+Import boundaries are enforced by a test (`tests/architecture.test.ts`): `engine` imports nothing
+outside itself but zod; `ui` reaches the game only through the app protocol; and neither the engine
+nor the narrator may mention the clock, the DOM, `Math.random` or the non-deterministic `Math`
+functions. The decision policy for NPCs gets its own `engine/policy/` folder in Milestone 4; until
+then the AI players live in `tools/players.ts`.
 
 ### 4.2 Engine API
 
 ```ts
-createLife(options: { seed: string; content: ContentBundle; start?: StartOptions }): GameState
+createLife(options: { seed: string; start?: StartOptions }, env: EngineEnv): GameState
+step(state: GameState, command: Command, env: EngineEnv): StepResult
+replay(source: { seed; options; commands }, env: EngineEnv): GameState
 
-step(state: GameState, command: Command): StepResult
+interface EngineEnv {
+  content: Prepared           // the compiled content bundle
+  narrator?: Narrator | null  // turns facts into prose; the simulation is identical without one
+}
 
-type Command =
+type Command =                // Milestone 1; later milestones add setRoutine, act and continueAs
   | { type: 'advance'; until: 'month' | 'season' | 'birthday' }
   | { type: 'decide'; decisionId: string; optionId: string }
-  | { type: 'setRoutine'; routine: RoutinePlan }
   | { type: 'setPolicy'; policy: Partial<StandingPolicies> }
-  | { type: 'act'; action: ActionId; params: Record<string, unknown> }
-  | { type: 'continueAs'; personId: string }
 
 interface StepResult {
   state: GameState
-  facts: NarrativeFact[]      // structured, not yet prose
-  pending: Decision[]         // why the advance stopped, if it did
-  stoppedAt: MonthIndex
+  facts: Fact[]               // structured record of what happened, in order
+  pending: Decision[]         // decisions waiting for the player
 }
 
-perceive(state: GameState): PlayerView            // everything the UI may know
-explain(state: GameState, outcomeId: string): Explanation
+perceive(state: GameState, content: Prepared): PlayerView          // everything the UI may know
+explainOutcome(state, content, outcomeId): Explanation             // in the narrative module
 ```
 
-`step` is a pure function of `(state, command)`. In the browser the engine runs in a Web Worker so
-the page never blocks; in Node the batch tool calls it directly.
+`step` is a pure function of `(state, command)` given the content. In the browser the engine runs
+in a Web Worker so the page never blocks; in Node the batch tool calls it directly.
+
+The narrator is passed in rather than imported, so the engine has no dependency on wording. Prose
+is stored in the life log as it was shown, so later text changes never rewrite a life that has
+already been lived, and a separate `simulationHash` (state without prose) is what determinism tests
+compare.
 
 ### 4.3 Determinism
 
@@ -1410,6 +1424,31 @@ Recorded so they can be challenged. None needs an answer.
 16. Units are US customary and currency is USD, both taken from the country pack.
 17. Law and risk is built in Milestone 6.
 18. No telemetry. The game stores nothing outside the player's browser.
+
+Added while building Milestone 1:
+
+19. **Early childhood protection.** In interactive play the player character's own death draws
+    are skipped before age five. About 0.7% of US children die before five; a life that ends in the
+    first minute is realistic but is not a game. Batch runs never apply this, so the statistics
+    stay honest. Recorded as a deliberate deviation in CALIBRATION.md.
+20. **The end of the life table.** The published table closes with "100 and older" and a life
+    expectancy. From 100 the engine uses a constant annual probability chosen to reproduce that
+    expectancy, and nobody lives past 120.
+21. **Text variant choice** is: fallback variants only when nothing else matches; then the
+    least-used variants in this life, so each is used once before any repeats; then a preference
+    for variants with conditions and against recently used ones.
+22. **Prose is stored, not regenerated.** Each log entry keeps the text it was shown with.
+23. **The interrupt governor runs after the random draw**, so holding an optional offer back never
+    changes any other draw.
+24. **An event must have a hazard, be once-only, or have a cooldown.** The validator rejects one
+    that would fire every month.
+25. **Milestone 1's "activity level"** is a single standing policy that stands in for the weekly
+    routine. It is replaced, not extended, in Milestone 5; so are the placeholder life-stage and
+    activity events.
+26. **Birth month is uniform** across the year. Real births are mildly seasonal; nothing yet
+    depends on it.
+27. **A process stage is first handled the month after it is entered**, so a stage of N months
+    applies its monthly effects exactly N times.
 
 ---
 

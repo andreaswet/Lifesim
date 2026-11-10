@@ -98,3 +98,20 @@ describe('narrative', () => {
     }
   })
 })
+
+describe('repetition', () => {
+  it('does not use the same year-summary sentence two years running', () => {
+    let pairs = 0
+    let repeats = 0
+    for (const life of lives) {
+      const summaries = life.log.filter((e) => e.fact.kind === 'year_summary')
+      for (let i = 1; i < summaries.length; i++) {
+        pairs++
+        if (summaries[i]!.templateId === summaries[i - 1]!.templateId) repeats++
+      }
+    }
+    // Milestone 1 has few sentences for a long life, so a rare back-to-back repeat is tolerated;
+    // a quarter of all years, as before recency was graded, is not.
+    expect(repeats / pairs).toBeLessThan(0.03)
+  })
+})
