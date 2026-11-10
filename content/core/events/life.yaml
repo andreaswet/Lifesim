@@ -1,0 +1,43 @@
+# Milestone 1 placeholder life events: enough to exercise the event pipeline over a whole life.
+# Family, school and work systems replace most of these with events that have real causes.
+
+- id: milestone.first_steps
+  sourceClass: structural
+  stages: [early]
+  when: "self.ageMonths >= 10"
+  once: true
+  hazard:
+    base:
+      perYear: 4
+      population: infants from ten months who are not yet walking
+      source: "WHO Multicentre Growth Reference Study 2006: walking alone, median 12.1 months"
+      asOf: 2006
+  fact: { kind: milestone, data: { which: "'first_steps'", age: self.age }, significant: true }
+
+- id: milestone.school_start
+  sourceClass: structural
+  stages: [early, childhood]
+  when: "self.age >= 5 && world.month == 9"
+  once: true
+  fact: { kind: milestone, data: { which: "'school_start'", age: self.age }, significant: true }
+
+- id: milestone.adult
+  sourceClass: structural
+  stages: [early_adulthood]
+  when: "self.age >= 18"
+  once: true
+  fact: { kind: milestone, data: { which: "'adult'", age: self.age }, significant: true }
+
+- id: milestone.decade
+  sourceClass: structural
+  stages: [early_adulthood, midlife, late_career, old_age]
+  when: "self.age >= 30 && self.age % 10 == 0 && self.ageMonths % 12 == 0"
+  cooldownMonths: 12
+  fact: { kind: milestone, data: { which: "'decade'", age: self.age }, significant: true }
+
+- id: milestone.sixty_five
+  sourceClass: structural
+  stages: [late_career, old_age]
+  when: "self.age >= 65"
+  once: true
+  fact: { kind: milestone, data: { which: "'sixty_five'", age: self.age }, significant: true }

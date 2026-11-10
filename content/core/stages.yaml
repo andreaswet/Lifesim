@@ -1,0 +1,9 @@
+# Life stages. They index events, set pacing caps and choose wording. Ages follow the pacing
+# budget in the design document (§2.1).
+- { id: early, fromAge: 0, label: Early years }
+- { id: childhood, fromAge: 6, label: Childhood }
+- { id: adolescence, fromAge: 13, label: Adolescence }
+- { id: early_adulthood, fromAge: 18, label: Early adulthood }
+- { id: midlife, fromAge: 31, label: Midlife }
+- { id: late_career, fromAge: 51, label: Later working years }
+- { id: old_age, fromAge: 66, label: Old age }

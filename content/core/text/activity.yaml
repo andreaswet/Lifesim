@@ -1,0 +1,91 @@
+- id: activity.changed
+  fact: activity_changed
+  variants:
+    - when: "fact.to == 'active' && self.age < 13"
+      text: "You are outside every afternoon now, and on a field most weekends."
+    - when: "fact.to == 'active' && self.age >= 13"
+      text: "You commit to a real training schedule. The first weeks are mostly soreness."
+    - when: "fact.to == 'active' && self.age >= 13"
+      text: "You start training most days, with a plan written down. Evenings stop being free."
+    - when: "fact.to == 'moderate' && fact.direction == 'up'"
+      text: "You start exercising a few times a week. It is harder to begin than you expected."
+    - when: "fact.to == 'moderate' && fact.direction == 'up'"
+      text: "Three sessions a week, you decide, and for now you keep to it."
+    - when: "fact.to == 'moderate' && fact.direction == 'down'"
+      text: "You ease off the serious training and keep a few sessions a week."
+    - when: "fact.to == 'light' && fact.direction == 'up'"
+      text: "You start walking most days. It is not much, and it is more than before."
+    - when: "fact.to == 'light' && fact.direction == 'down'"
+      text: "You cut back to the odd walk."
+    - when: "fact.to == 'light' && fact.direction == 'down'"
+      text: "The workouts stop. You still walk when the weather is kind."
+    - when: "fact.to == 'sedentary'"
+      text: "You stop bothering with exercise. The time fills up with other things almost at once."
+    - when: "fact.to == 'sedentary' && self.age < 18"
+      text: "You spend most of your free time indoors now, sitting."
+
+- id: prompt.team
+  variants:
+    - text: "Sign-ups for the {world.season == 'autumn' ? 'winter basketball' : world.season == 'winter' ? 'spring baseball' : world.season == 'spring' ? 'summer swim' : 'fall soccer'} league close at the end of next month. Practice is three afternoons a week, with games on Saturdays."
+    - text: "A sheet goes round at school for the {world.season == 'autumn' ? 'basketball' : world.season == 'winter' ? 'track' : world.season == 'spring' ? 'swim' : 'cross-country'} team. Training is most days after class."
+
+- id: prompt.swim
+  variants:
+    - text: "The community pool posts its new schedule: a lap-swim hour, early, four mornings a week. You have been meaning to do something like this."
+    - text: "A gym opens a ten-minute walk from where you live. You have not exercised properly in a long while."
+
+- id: prompt.slipping
+  variants:
+    - text: "The last two months have been crowded, and your training has been the thing that gives. Your shoes have not left the hallway in three weeks."
+    - text: "You have skipped more sessions than you have kept lately. It would be easy to stop pretending you are going to make them up."
+
+- id: prompt.walking_loop
+  variants:
+    - text: "The center two streets over runs a morning walking loop, slow and flat, five days a week. Your knees have been complaining on the stairs."
+    - text: "A neighbor walks the same mile every morning at eight and has asked more than once whether you would like to come."
+
+- id: activity.choice
+  fact: choice
+  variants:
+    - when: "fact.which == 'team_join' && !fact.lapsed"
+      text: "You sign up. By the third practice your legs ache in a way that feels like progress."
+    - when: "fact.which == 'team_join' && !fact.lapsed"
+      text: "You put your name down. The first Saturday game is a loss, and you want another one immediately."
+    - when: "fact.which == 'team_join' && fact.lapsed"
+      text: "The sign-up sheet goes home in your bag and comes back signed. You are on the team."
+    - when: "fact.which == 'team_skip' && !fact.lapsed"
+      text: "You let the sign-up date go by."
+    - when: "fact.which == 'team_skip' && fact.lapsed"
+      text: "The sign-up date passes without your deciding anything, which is its own decision."
+    - when: "fact.which == 'swim_start' && !fact.lapsed"
+      text: "You go. The first morning is cold and slow, and you go back anyway."
+    - when: "fact.which == 'swim_start' && fact.lapsed"
+      text: "You never exactly decide to, but one morning you find yourself there with a towel, and then again two days later."
+    - when: "fact.which == 'swim_decline' && !fact.lapsed"
+      text: "Not this year, you decide."
+    - when: "fact.which == 'swim_decline' && fact.lapsed"
+      text: "You keep meaning to go. You do not go."
+    - when: "fact.which == 'routine_protect' && !fact.lapsed"
+      text: "You put the sessions back in the calendar and treat them like appointments. Something else will have to give."
+    - when: "fact.which == 'routine_protect' && fact.lapsed"
+      text: "Without quite resolving to, you are back out the door by the end of the month. The habit held."
+    - when: "fact.which == 'routine_drop' && !fact.lapsed"
+      text: "You let the training go for now. \"For now\" is doing a lot of work in that sentence."
+    - when: "fact.which == 'routine_drop' && fact.lapsed"
+      text: "Nobody decides to stop. The gaps between sessions simply get longer until there are no sessions."
+    - when: "fact.which == 'loop_go' && !fact.lapsed"
+      text: "You go along. The pace is slow enough to talk, and you are home by nine."
+    - when: "fact.which == 'loop_go' && fact.lapsed"
+      text: "One morning you are up early anyway, and you walk the loop. Then it is most mornings."
+    - when: "fact.which == 'loop_stay' && !fact.lapsed"
+      text: "You stay home. The mornings are comfortable as they are."
+    - when: "fact.which == 'loop_stay' && fact.lapsed"
+      text: "You mean to try it. The weeks go by and the chair is comfortable."
+
+- id: decision.made
+  fact: decision_made
+  variants:
+    - when: "!fact.lapsed"
+      text: "You decide: {fact.choice}."
+    - when: "fact.lapsed"
+      text: "You never quite decide, and it settles itself: {fact.choice}."

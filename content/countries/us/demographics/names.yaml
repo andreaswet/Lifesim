@@ -1,0 +1,6 @@
+# Milestone 1 placeholder: common names, drawn uniformly. Milestone 2 replaces this with weighted
+# name tables by sex, birth year and family background.
+source: Common US given names for recent births and common US family names; unweighted
+male: [Liam, Noah, Oliver, James, Elijah, Mateo, Theodore, Henry, Lucas, William, Benjamin, Levi, Ezra, Sebastian, Jack, Daniel, Samuel, Michael, Ethan, Asher, John, Hudson, Luca, Leo, Elias, Owen, Alexander, Dylan, Santiago, Julian, David, Joseph, Matthew, Luke, Jayden, Gabriel, Isaac, Anthony, Josiah, Caleb]
+female: [Olivia, Emma, Charlotte, Amelia, Sophia, Mia, Isabella, Ava, Evelyn, Luna, Harper, Sofia, Camila, Eleanor, Elizabeth, Violet, Scarlett, Emily, Hazel, Lily, Gianna, Aurora, Penelope, Aria, Nora, Chloe, Ellie, Mila, Avery, Layla, Abigail, Ella, Isla, Eliana, Nova, Madison, Zoe, Ivy, Grace, Naomi]
+family: [Smith, Johnson, Williams, Brown, Jones, Garcia, Miller, Davis, Rodriguez, Martinez, Hernandez, Lopez, Gonzalez, Wilson, Anderson, Thomas, Taylor, Moore, Jackson, Martin, Lee, Perez, Thompson, White, Harris, Sanchez, Clark, Ramirez, Lewis, Robinson, Walker, Young, Allen, King, Wright, Scott, Torres, Nguyen, Hill, Flores, Green, Adams, Nelson, Baker, Hall, Rivera, Campbell, Mitchell, Carter, Roberts, Kim, Patel, Murphy, Cohen, Chen, Sullivan, Washington, Ortiz, Reyes, Bennett]

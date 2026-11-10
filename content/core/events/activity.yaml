@@ -1,0 +1,99 @@
+# Opportunities to change how active the character is. Their rates are design parameters, not
+# measured base rates: they set how often the game offers the choice. Milestone 5 replaces these
+# with the weekly routine, habit strength and adherence.
+
+- id: activity.team
+  sourceClass: structural
+  stages: [childhood, adolescence]
+  when: "self.age >= 8 && self.age <= 16 && self.activityLevel < 3"
+  cooldownMonths: 30
+  optional: true
+  hazard:
+    base: { perYear: 0.3, population: children 8 to 16 not already training, source: design parameter, asOf: 2026 }
+  decision:
+    class: deferrable
+    deadlineMonths: 1
+    prompt: prompt.team
+    options:
+      - id: join
+        label: Sign up
+        cost: { hoursPerWeek: 6, energy: moderate }
+        autoWeight: 1
+        effects: [{ setPolicy: { activity: active } }]
+        fact: { kind: choice, data: { which: "'team_join'" }, significant: true }
+      - id: skip
+        label: Let it go by
+        autoWeight: 1.6
+        fact: { kind: choice, data: { which: "'team_skip'" } }
+
+- id: activity.swim
+  sourceClass: structural
+  stages: [early_adulthood, midlife]
+  when: "self.activityLevel <= 1"
+  cooldownMonths: 48
+  optional: true
+  hazard:
+    base: { perYear: 0.2, population: adults 18 to 50 who are not exercising, source: design parameter, asOf: 2026 }
+  decision:
+    class: deferrable
+    deadlineMonths: 2
+    prompt: prompt.swim
+    options:
+      - id: start
+        label: Start going
+        cost: { hoursPerWeek: 4, energy: moderate }
+        autoWeight: 1
+        effects: [{ setPolicy: { activity: moderate } }]
+        fact: { kind: choice, data: { which: "'swim_start'" }, significant: true }
+      - id: decline
+        label: Not this year
+        autoWeight: 2
+        fact: { kind: choice, data: { which: "'swim_decline'" } }
+
+- id: activity.slipping
+  sourceClass: player
+  stages: [early_adulthood, midlife, late_career]
+  when: "self.age >= 22 && self.activityLevel >= 2"
+  cooldownMonths: 36
+  optional: true
+  hazard:
+    base: { perYear: 0.14, population: adults 22 to 65 who exercise regularly, source: design parameter, asOf: 2026 }
+  decision:
+    class: deferrable
+    deadlineMonths: 1
+    prompt: prompt.slipping
+    options:
+      - id: protect
+        label: Protect the time
+        cost: { energy: moderate }
+        autoWeight: 1
+        fact: { kind: choice, data: { which: "'routine_protect'" } }
+      - id: drop
+        label: Let it go for now
+        autoWeight: 1.2
+        effects: [{ setPolicy: { activity: light } }]
+        fact: { kind: choice, data: { which: "'routine_drop'" }, significant: true }
+
+- id: activity.walking_loop
+  sourceClass: structural
+  stages: [late_career, old_age]
+  when: "self.age >= 55 && self.activityLevel == 0"
+  cooldownMonths: 48
+  optional: true
+  hazard:
+    base: { perYear: 0.2, population: adults over 55 who are sedentary, source: design parameter, asOf: 2026 }
+  decision:
+    class: deferrable
+    deadlineMonths: 2
+    prompt: prompt.walking_loop
+    options:
+      - id: go
+        label: Go along
+        cost: { hoursPerWeek: 3, energy: low }
+        autoWeight: 1
+        effects: [{ setPolicy: { activity: light } }]
+        fact: { kind: choice, data: { which: "'loop_go'" }, significant: true }
+      - id: stay
+        label: Stay home
+        autoWeight: 1.5
+        fact: { kind: choice, data: { which: "'loop_stay'" } }

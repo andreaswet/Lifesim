@@ -1,0 +1,10 @@
+# The interrupt governor (design §5.3): the most optional decisions that may open in any twelve
+# months, by life stage. Required decisions are never held back.
+maxOptionalDecisionsPerYear:
+  early: 0
+  childhood: 1
+  adolescence: 2
+  early_adulthood: 3
+  midlife: 2
+  late_career: 2
+  old_age: 2

@@ -1,0 +1,73 @@
+# Body stocks for Milestone 1. Values are on a 0–1 scale where 1 is what a well-trained adult
+# reaches at peak age.
+#
+# Envelope: the fraction of lifetime peak capacity available at each age.
+#   cardio   — aerobic capacity falls about 10% a decade from the late twenties and faster after
+#              seventy (Fleg et al. 2005, Baltimore Longitudinal Study of Aging).
+#   strength — holds into the forties, then falls about 1% a year, faster after seventy
+#              (Mitchell et al. 2012, review of sarcopenia and dynapenia).
+# Time constants: fitness is gained over months and lost faster than it is gained (design §3.1).
+#
+# Milestone 5 replaces the single activity level with the full weekly routine and adherence.
+stocks:
+  cardio:
+    atBirth: 0.2
+    tauUpMonths: 8
+    tauDownMonths: 3.5
+    envelope:
+      - [0, 0.25]
+      - [6, 0.55]
+      - [12, 0.75]
+      - [18, 0.95]
+      - [25, 1.0]
+      - [35, 0.93]
+      - [45, 0.84]
+      - [55, 0.75]
+      - [65, 0.66]
+      - [75, 0.55]
+      - [85, 0.42]
+      - [95, 0.30]
+      - [110, 0.18]
+  strength:
+    atBirth: 0.08
+    tauUpMonths: 10
+    tauDownMonths: 5
+    envelope:
+      - [0, 0.10]
+      - [6, 0.30]
+      - [12, 0.50]
+      - [18, 0.90]
+      - [25, 1.0]
+      - [40, 0.97]
+      - [50, 0.90]
+      - [60, 0.80]
+      - [70, 0.68]
+      - [80, 0.52]
+      - [90, 0.38]
+      - [110, 0.20]
+
+# `sustains` is the fraction of the age envelope each level holds once the body has caught up.
+activityLevels:
+  - id: sedentary
+    label: Mostly sitting
+    description: No exercise to speak of. The day happens in chairs.
+    hoursPerWeek: 0
+    sustains: { cardio: 0.52, strength: 0.60 }
+  - id: light
+    label: Some walking
+    description: A walk most days, stairs when they are there.
+    hoursPerWeek: 2
+    sustains: { cardio: 0.66, strength: 0.70 }
+  - id: moderate
+    label: Regular exercise
+    description: Three or four sessions a week that leave you out of breath.
+    hoursPerWeek: 4
+    sustains: { cardio: 0.80, strength: 0.80 }
+  - id: active
+    label: Serious training
+    description: Most days, with a plan. It costs evenings and weekends.
+    hoursPerWeek: 8
+    sustains: { cardio: 0.95, strength: 0.95 }
+
+defaultActivity: moderate
+activityChoiceFromAge: 6
