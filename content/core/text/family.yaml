@@ -145,6 +145,10 @@
       text: "{who.first} loses {who.his} job. There is no second wage in the house to fall back on, and you can tell."
     - when: "self.age >= 18"
       text: "Your {who.word} has been let go. {who.He} says it is fine, twice, in the same conversation."
+    - when: "self.age >= 18"
+      text: "{who.first} is out of work as of {world.monthName}. At {who.age}, {who.he} knows what the job market thinks of {who.his} age."
+    - when: "self.age >= 18"
+      text: "Your {who.word} loses {who.his} job. You find out a week later, from someone else."
     - when: "who.word != 'mother' && who.word != 'father'"
       text: "Your {who.word} {who.first} is out of work."
 

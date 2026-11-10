@@ -69,17 +69,23 @@ export function explainOutcome(state: GameState, content: Prepared, outcomeId: s
   const first = say(`why.${outcome.kind}`, base) ?? say('why.base', base)
   if (first) lines.push(first)
 
+  // What counted for the outcome and what counted against it, each as one sentence, with the
+  // heaviest factor first.
   let hidden = false
   const factors = [...outcome.factors].sort((a, b) => Math.abs(b.contribution) - Math.abs(a.contribution))
+  const forIt: string[] = []
+  const against: string[] = []
   for (const factor of factors) {
     const def = content.factors.get(factor.id)
     if (!def) continue
-    if (def.visibility === 'hidden') {
-      hidden = true
-      continue
-    }
-    const against = factor.contribution < 0
-    const line = say(against ? 'why.less' : 'why.more', { phrase: against ? (def.whenAgainst ?? def.phrase) : def.phrase })
+    if (def.visibility === 'hidden') hidden = true
+    else if (factor.contribution < 0) against.push(def.whenAgainst ?? def.phrase)
+    else forIt.push(def.phrase)
+  }
+  const list = (items: string[]): string => (items.length <= 1 ? (items[0] ?? '') : `${items.slice(0, -1).join(', ')}, and ${items[items.length - 1]}`)
+  for (const [id, items] of [['why.more', forIt], ['why.less', against]] as const) {
+    if (items.length === 0) continue
+    const line = say(id, { phrase: list(items) })
     if (line) lines.push(line)
   }
   if (hidden) {

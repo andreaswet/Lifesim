@@ -451,7 +451,8 @@ export function familyMonth(ctx: Ctx): void {
     if (home && change === 'lost') home.disruption += 0.25
     // A parent's job is news to a child who lives with them, and to a grown child less so.
     if (person.id !== self.id && person.householdId !== null && person.householdId === self.householdId) {
-      tellPlayer(ctx, change === 'lost' ? 'parent_job_lost' : 'parent_job_found', person, { months: 0 }, change === 'lost')
+      // It marks a year for a child at home; for a grown child it is news, not the event of the year.
+      tellPlayer(ctx, change === 'lost' ? 'parent_job_lost' : 'parent_job_found', person, { months: 0 }, change === 'lost' && ageYears(self, state.now) < ADULT)
     }
   }
 

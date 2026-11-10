@@ -649,8 +649,8 @@ code {
   .tabs button {
     flex: 1 1 auto;
     justify-content: center;
-    padding: 0.4rem 0.3rem;
-    font-size: 0.92rem;
+    padding: 0.4rem 0.15rem;
+    font-size: 0.82rem;
   }
 
   .game[data-tab='story'] .panel,

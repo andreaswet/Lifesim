@@ -108,7 +108,7 @@
   fact: band_changed
   when: "fact.descriptor == 'strain'"
   variants:
-    - when: "fact.direction == 'up' && fact.to == 'stretched'"
+    - when: "fact.direction == 'up' && fact.to == 'worn_down'"
       text: "There are not enough hours in your week, and you have started borrowing them from sleep."
     - when: "fact.direction == 'up' && fact.to == 'worn_down'"
       text: "You are tired in a way that a weekend does not fix."
@@ -159,17 +159,17 @@
   fact: admission
   variants:
     - when: "fact.which == 'admitted'"
-      text: "{fact.name} says yes."
+      text: "{cap(fact.name)} says yes."
     - when: "fact.which == 'admitted'"
       text: "An envelope from {fact.name}: you are in."
     - when: "fact.which == 'admitted'"
       text: "You are admitted to {fact.name}."
     - when: "fact.which == 'admitted' && fact.tier == 'elite'"
-      text: "{fact.name} admits you. You read the first line four times."
+      text: "{cap(fact.name)} admits you. You read the first line four times."
     - when: "fact.which == 'denied'"
-      text: "{fact.name} says no."
+      text: "{cap(fact.name)} says no."
     - when: "fact.which == 'denied'"
-      text: "{fact.name} regrets to inform you."
+      text: "{cap(fact.name)} regrets to inform you."
     - when: "fact.which == 'denied'"
       text: "A short letter from {fact.name}. It is not the one you wanted."
 
@@ -197,11 +197,11 @@
   fact: hs_graduated
   variants:
     - when: "fact.which == 'college'"
-      text: "You graduate from {fact.school} in June with a {fact.gpa} average. In September you start at {fact.plan}."
+      text: "You graduate from {fact.school} in June with a {gpa(fact.gpa)} average. In September you start at {fact.plan}."
     - when: "fact.which == 'college'"
-      text: "June: a gown, a folding chair, your name read out. You leave {fact.school} with a {fact.gpa} average and a place at {fact.plan}."
+      text: "June: a gown, a folding chair, your name read out. You leave {fact.school} with a {gpa(fact.gpa)} average and a place at {fact.plan}."
     - when: "fact.which == 'no_plan'"
-      text: "You graduate from {fact.school} in June with a {fact.gpa} average. Nothing in particular comes next."
+      text: "You graduate from {fact.school} in June with a {gpa(fact.gpa)} average. Nothing in particular comes next."
     - when: "fact.which == 'no_plan'"
       text: "June: a gown, a folding chair, your name read out. After thirteen years, school is over."
 
@@ -255,9 +255,9 @@
 - id: prompt.edu.apply
   variants:
     - when: "fact.hasTest"
-      text: "College applications are due this autumn. You have a {fact.gpa} average and a {fact.total} on the test. How widely you apply is up to you; each application costs a fee and several evenings."
+      text: "College applications are due this autumn. You have a {gpa(fact.gpa)} average and scored {fact.total} on the test. How widely you apply is up to you; each application costs a fee and several evenings."
     - when: "!fact.hasTest"
-      text: "College applications are due this autumn. You have a {fact.gpa} average and no test score. How widely you apply is up to you; each application costs a fee and several evenings."
+      text: "College applications are due this autumn. You have a {gpa(fact.gpa)} average and no test score. How widely you apply is up to you; each application costs a fee and several evenings."
 
 - id: prompt.edu.choose
   variants:
@@ -267,7 +267,8 @@
       text: "None of the colleges you applied to took you. The community college takes everyone. The figure is what a year would cost you after grants and after what your parents can give."
     - when: "fact.applied == 0"
       text: "It is time to say whether you will enroll at the community college in the autumn. The figure is what a year would cost you after grants and after what your parents can give."
-    - text: "It is time to decide about college."
+    - fallback: true
+      text: "It is time to decide about college."
 
 - id: label.edu.enroll
   variants: [{ text: "Enroll at {fact.name}, a {fact.tierLabel}" }]

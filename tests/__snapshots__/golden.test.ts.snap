@@ -14,7 +14,7 @@ exports[`golden lives > golden-ada (persona) 1`] = `
   "logEntries": 155,
   "name": "Luca Johnson",
   "sex": "male",
-  "simulation": "cbf79e4d693284f4",
+  "simulation": "e1ad0c7f3d539117",
 }
 `;
 
@@ -32,7 +32,7 @@ exports[`golden lives > golden-ben (active) 1`] = `
   "logEntries": 161,
   "name": "Joseph Hill",
   "sex": "male",
-  "simulation": "4dd689e5353dafd0",
+  "simulation": "79bfec7b7457fdd0",
 }
 `;
 
@@ -50,7 +50,7 @@ exports[`golden lives > golden-cyd (sedentary) 1`] = `
   "logEntries": 193,
   "name": "Nora Lopez",
   "sex": "female",
-  "simulation": "935fcef2ac061b81",
+  "simulation": "b3637d276153ec9e",
 }
 `;
 
@@ -68,6 +68,6 @@ exports[`golden lives > golden-dot (random) 1`] = `
   "logEntries": 214,
   "name": "Harper Green",
   "sex": "female",
-  "simulation": "9b58b84a7a4ca464",
+  "simulation": "fdae43abc953c172",
 }
 `;

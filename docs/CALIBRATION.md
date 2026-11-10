@@ -1,127 +1,158 @@
 # Calibration
 
 How the simulation compares with real statistics for the United States. One row per target: its
-source, the pinned value, what the simulation produces, and the tolerance. Deliberate deviations
-are listed with their reasons.
+source, the pinned value, what the simulation produces, and a verdict. Deliberate deviations are
+listed with their reasons.
 
-**As of Milestone 1.** Only mortality and one illness exist, so this document is short. The full
-list of targets is in [DESIGN.md §13](DESIGN.md#13-calibration-targets); each joins this document
-when the system that produces it is built.
+**As of Milestone 2:** mortality, one illness, families and schooling. The full list of targets is
+in [DESIGN.md §13](DESIGN.md#13-calibration-targets); each joins this document when the system that
+produces it is built.
 
 ## How to reproduce
 
 ```sh
-npm run batch -- --lives 100000 --seed cal-m1 --strategy persona --no-text
+npm run batch -- --lives 20000 --seed cal-m2 --strategy persona --no-text
 ```
 
 The result depends only on the seed, the strategy, the number of lives and the content; life *i*
-always has seed `cal-m1-i`. Lives in a batch are never protected in early childhood (see
-Deviations). The numbers below are from that command at content hash `a01d6f4a0c07e173`, except the
-flu rate, which was re-measured on 20,000 lives after its constant was tuned.
+always has seed `cal-m2-i`. Lives in a batch are never protected in early childhood (see
+Deviations). Unless a row says otherwise, the numbers below are from that command at content hash
+`b3cecb6bb93d146b`.
+
+The players are **persona** players: each acts as its own drawn temperament would, and takes the
+choices that are the player's alone (leaving school, enrolling later) at the same rates as the
+people the player does not control. So the statistics describe the simulated population, not a
+strategy.
+
+## How sure the sources are
+
+| Marked | Meaning |
+|--------|---------|
+| **file** | The figure was read from the publisher's own table, downloaded during this work. |
+| **memory** | The figure was written from memory of the cited publication and still needs pinning. |
+
+Read from file so far: NCHS life tables 2023; Census state populations 2023; NCES Digest 2023
+tables 104.20 (attainment), 219.46 (graduation), 302.10 (enrollment), 326.10 (completion) and
+331.30 (net price).
 
 ## Mortality
 
-Source for every row: NCHS, *United States Life Tables, 2023* (National Vital Statistics Reports
-vol. 74 no. 6), Table 2 (males) and Table 3 (females). The annual probabilities of death for ages
-0–99 in `content/countries/us/demographics/life-table.csv` are copied from those tables.
+Source: NCHS, *United States Life Tables, 2023* (NVSR vol. 74 no. 6), Tables 2 and 3 (**file**).
+Mortality is still an input: the engine draws death directly from the table, and how a person
+lives does not yet change it. Unchanged since Milestone 1.
 
-Mortality is an **input** in this milestone: the engine draws death directly from the table, so
-the comparison checks the engine and the data, with a tolerance of about 3% (in practice, sampling
-error).
+| Metric | Published | Simulated, 100,000 lives (M1) | Simulated, 20,000 lives (M2) |
+|--------|-----------|-------------------------------|------------------------------|
+| Life expectancy at birth, male | 75.82 | 75.94 ± 0.08 | 75.48 ± 0.18 |
+| Life expectancy at birth, female | 81.08 | 81.16 ± 0.07 | 80.80 ± 0.16 |
+| Infant mortality per 1,000 births | 5.6 | 5.4 | 6.9 |
+| Survival to 65, male / female | 79.0% / 87.4% | 79.3% / 87.5% | 78.7% / 87.3% |
 
-| Metric | Published | Simulated (100,000 lives) | Verdict |
-|--------|-----------|---------------------------|---------|
-| Life expectancy at birth, male | 75.82 | 75.94 ± 0.08 | within sampling error |
-| Life expectancy at birth, female | 81.08 | 81.16 ± 0.07 | within sampling error |
-| Life expectancy at birth, both | 78.42 | 78.50 | within 0.1% |
-| Infant mortality per 1,000 births | 5.6 | 5.4 | within sampling error (±0.24) |
-| Boys among births | 51.1% | 51.0% | within sampling error |
-
-Survival from birth, simulated / table:
-
-| To age | Male | Female |
-|--------|------|--------|
-| 1 | 99.4% / 99.4% | 99.5% / 99.5% |
-| 20 | 98.8% / 98.7% | 99.1% / 99.1% |
-| 40 | 94.9% / 94.7% | 97.5% / 97.3% |
-| 65 | 79.3% / 79.0% | 87.5% / 87.4% |
-| 85 | 36.0% / 35.8% | 49.7% / 49.7% |
-| 100 | 1.1% / 1.1% | 2.9% / 2.8% |
-
-Two stronger checks sit behind these numbers:
-
-- **Exact, not statistical.** A unit test computes, for 150 seeds, the month in which the life
-  table and the seed say the person dies, and requires the engine to end each life in exactly that
-  month.
-- **The data reproduces the publication.** Life expectancy computed directly from the stored table
-  (with the open-interval rule below) is 75.81 and 81.07, against the published 75.82 and 81.08.
-
-### A note on batch size
-
-Life expectancy from a batch has a standard error of about 17 years ÷ √(lives per sex). With 10,000
-lives per sex that is ±0.18 years, and a batch will sometimes land two or three standard errors
-out. One did during this milestone: the first 20,000 lives of seed `m1` gave men 75.24 (0.57 below
-the table), while the next 20,000 gave 76.10. Before accepting that as noise I checked the random
-generator directly:
-
-- 1.5 million lives of mortality alone, in ten groups, landed between 0.04 below and 0.11 above
-  the table, with no pattern by sex or seed;
-- 100 million draws from the mortality stream had the right frequency below every threshold from
-  0.0003 to 0.1, to within 0.05%.
-
-Use at least 100,000 lives when a mortality difference of a tenth of a year matters.
+The Milestone 2 batch is a little low on both sexes. I checked that this is the draw of seeds and
+not the new systems: the life table applied on its own to the same 20,000 seeds gives exactly
+75.48 and 80.80, and to the next 200,000 gives 75.80 and 81.02. A unit test also requires the
+engine to end each of 150 lives in exactly the month the table and the seed dictate. Use 100,000
+lives when a tenth of a year matters.
 
 ## Illness
 
 | Metric | Target | Source | Simulated | Verdict |
 |--------|--------|--------|-----------|---------|
-| Symptomatic influenza per person per year | 0.080 | Tokars, Olsen & Reed 2018, *Clinical Infectious Diseases* | 0.0804 | within 1% |
+| Symptomatic influenza per person per year | 0.080 | Tokars, Olsen & Reed 2018 (memory) | 0.0797 | within 1% |
 
-The flu is the first event to use the named-factor hazard model (design §3.2): a base rate, a
-seasonal factor, and a normalization constant that keeps the population on the base rate. The
-constant was first computed analytically (2.318), which left the simulated rate 1.5% low because
-of the months in which a second flu cannot start; it was then set from the batch result (2.283).
-This is the procedure every later hazard will follow.
+## Families
 
-Not yet modeled: variation in flu risk by age, vaccination, and any effect of the flu on mortality.
+| Metric | Target | Source | Simulated | Verdict |
+|--------|--------|--------|-----------|---------|
+| Births to married / cohabiting / lone mothers | 60% / 24% / 16% | NCHS births 2022; NSFG (memory) | 62% / 22% / 16% | close |
+| Children under 18 living with both parents | about 65% | Census CPS 2023 (memory) | 63.1% | close |
+| Brothers and sisters, counted from the child | about 1.8 | Derived from completed family sizes (memory) | 1.74 | close |
+| Median household income of families with a newborn | — | no target pinned yet | $80,300 | not checked |
+
+The simulation has no step-parents, so "both parents" means the child's own two. The Census figure
+of 71% counts any two parents; 65% is the share with two married parents, the closest published
+match. Household income comes from the stub earnings model and has no pinned target; it will be
+checked against Census income tables when Milestone 3 replaces the stub.
+
+## Schooling
+
+| Metric | Target | Source | Simulated | Verdict |
+|--------|--------|--------|-----------|---------|
+| Mean high-school GPA | 3.0–3.1 | NAEP High School Transcript Study 2019 (memory) | 3.04 | within |
+| Graduate high school with their class | 86–87% | NCES Digest 2023, Table 219.46 (file) | 86.0% | within |
+| Completed high school, ages 25–29 | 94.3% | NCES Digest 2023, Table 104.20 (file) | 94.6% at 27 | within |
+| SAT total among takers, mean (sd) | 1028 (about 215) | College Board 2023 (memory) | 1030 (212) | within |
+| Enrolled in college the autumn after graduating | 62.0% | NCES Digest 2023, Table 302.10 (file) | 63.3% | within |
+| … at a two-year college | 16.9% | same | 18.0% | close |
+| … at a four-year college | 45.1% | same | 45.3% | within |
+| Ever enrolled by the mid-twenties | about 84% | NCES ELS:2002 (memory) | 81.1% by 27 | close |
+| Associate degree or higher, ages 25–29 | 49.7% | NCES Digest 2023, Table 104.20 (file) | 47.7% at 27 | close |
+| Bachelor's or higher, ages 25–29 | 40.5% | same | 37.9% at 27 | 6% low |
+| … men / women | 35.9% / 45.2% | same | 35.0% / 40.8% | gap too small |
+| Four-year entrants holding a degree six years on | about 70% | National Student Clearinghouse (memory) | 69.8% | within |
+| Two-year entrants: associate / transferred / bachelor's | about 30% / 33% / 16% | NCES 326.20; NSC (memory) | 39% / 29% / 18% | associates high |
+| Bachelor's graduates who borrowed | about half | College Board, Trends in Student Aid (memory) | 48.9% | within |
+| Their average debt | about $29,000 | same | $23,600 | low, see below |
+
+Net prices by family income are taken directly from NCES Digest 2023, Table 331.30 (file), for
+public two-year, public four-year and private nonprofit colleges; the two selective private tiers
+are from memory.
 
 ## Causal checks
 
 | Check | Expected | Simulated | Verdict |
 |-------|----------|-----------|---------|
-| More activity, more fitness at 60 | ordered | cardio stock 0.37 sedentary, 0.47 light, 0.56 moderate, 0.67 active | as expected |
-| Same seed lived actively and sedentary | identical luck, different body | death month and every flu identical; fitness differs | as expected |
+| Bachelor's degree by family income quarter, poorest first | about 15 / 28 / 45 / 62% (Pell Institute, memory) | 20 / 29 / 40 / 62% | gradient right; poorest quarter high |
+| Enrolled right away, by income quarter | rising steeply | 38 / 54 / 71 / 87% | as expected |
+| Achievement gap, 90th vs 10th percentile of family income | 1.0–1.25 SD (Reardon 2011) | 1.30 SD | slightly wide |
+| Parent–child schooling correlation | 0.46 (Hertz et al. 2007) | 0.43 | within |
+| Poorer children do worse on average, with wide variation | yes | one in five from the poorest quarter earns a bachelor's; nearly four in ten from the richest do not | as intended |
+| Effort pays slowly | yes | same child, eight to fifteen: working hard instead of the minimum gains between 0.3 and 3 grade levels; one year gains under half a grade | as intended |
+| More activity, more fitness at 60 | ordered | 0.37 / 0.47 / 0.56 / 0.67 | as expected |
 | Lifestyle and length of life | none **yet** | none | Milestone 5 |
 
-The last row is the important caveat of this milestone: how the character lives does not yet
-change when they die. The "Why?" on a death says so in the game.
+The achievement gap is measured as Reardon measures it: the correlation between eighth-grade
+achievement and the rank of family income, times the 2.56 standard deviations between the 90th and
+10th percentiles.
+
+## Known shortfalls
+
+| Shortfall | Why | Plan |
+|-----------|-----|------|
+| The gender gap in degrees is about 6 points; the real gap is 9. | One mechanism is modeled: girls' greater engagement with schoolwork, at its measured size. No further modifier was added, by design decision Q2. | Revisit when personality differences and the labor market exist. |
+| Bachelor's degrees at 27 are 2.6 points low. | The target is for ages 25–29 and includes adults educated abroad; the simulation measures at 27 and has no immigration. | Accept. |
+| Average student debt is about $5,000 low. | Only federal loans exist. The published figure includes private loans. | Private and parent loans arrive with the money system in Milestone 3. |
+| Too many community-college entrants finish an associate degree. | Part-time study and work are only roughly modeled. | Revisit with work in Milestone 3. |
+| The poorest quarter earn somewhat too many bachelor's degrees. | Probably the same cause: the cost of college bites through unmet need, and most of what makes a poor student leave is in the labor market. | Revisit in Milestone 3. |
+| Race and ethnicity are not modeled. | Design decision Q1 is accepted but not yet implemented. | Start of Milestone 3. |
 
 ## Deliberate deviations
 
 | Deviation | Reason |
 |-----------|--------|
-| In interactive play, the player character's own death draws are skipped before age 5. | About 0.7% of US children die before five. A life that ends in the first minute is realistic but is not a game. Batch runs never do this, so every number in this document includes those deaths. |
-| Deaths are spread evenly over each year of age. | In reality most infant deaths come in the first weeks. The effect on life expectancy is about 0.002 years. |
-| From age 100 the annual probability of death is constant (0.398 for men, 0.362 for women), and nobody lives past 120. | The published table ends with "100 and older" and a life expectancy (2.01 and 2.26 years). The constant reproduces that expectancy. |
-| Birth months are uniform. | Real births are mildly seasonal. Nothing yet depends on it. |
+| In interactive play, the player character's own death draws are skipped before age 5. | About 0.7% of US children die before five. A life that ends in the first minute is realistic but is not a game. Batch runs never do this. |
+| Deaths are spread evenly over each year of age. | Most infant deaths really come in the first weeks. The effect on life expectancy is about 0.002 years. |
+| From age 100 the annual probability of death is constant, and nobody lives past 120. | The published table ends with "100 and older" and a life expectancy; the constant reproduces it. |
+| Birth months are uniform, and where a child is born follows state population rather than state births. | Nothing yet depends on the difference. |
+| Parents do not re-partner; nobody moves house; grown children stay in the parental household. | Partnerships beyond the parents' arrive in Milestone 4, housing in Milestone 3. |
+| College completion is calibrated to a degree from any college, not from the first one attended. | Nobody in the simulation moves between four-year colleges, so the first-college figure (64.6%, NCES 326.10) has no counterpart. |
+| Parents' earnings are a stand-in. | Replaced by occupations and employers in Milestone 3. |
 
 ## Checks on the game itself
 
-From a 4,000-life batch with text (`--seed m1text --strategy mixed`).
+From a 3,000-life batch with text (`--seed m2text --strategy mixed`).
 
-| Check | Target (design §9, §13.4) | Milestone 1 | Comment |
-|-------|---------------------------|-------------|---------|
-| Invariants broken | none | none | Checked every ten years of every life and at death. |
-| Decisions opened per year | within the pacing budget | 0.00–0.11 by life stage | Far below budget: there is little to decide yet. |
-| Significant feed items by source | player ≥ 50%, NPC ≈ 25%, structural ≈ 15%, chance ≤ 10% | player 36%, structural 56%, chance 8% | Off target, as expected: with no family, school or work, birthdays and life-stage markers dominate. |
-| Feed lines per life | — | 112 | About 1.4 a year. The three-hour life needs several times this. |
-| Lives in which some text variant appears more than twice | none | 99% | Missed, as expected: 176 text variants cannot cover 80 year summaries without repeating. The worst single sentence appears up to 14 times in one life. Back-to-back repeats are prevented. |
-| Computing time per simulated year | under 20 ms in Node | 0.14 ms | 100,000 lives take under five minutes on four cores. |
-| Time for one year in the browser | under 150 ms | about 40 ms per advance, including rendering and autosave | Measured in headless Chromium on a desktop-class machine, not on a phone. |
-| Same save in browser and Node | identical | identical | A save written by the browser replays exactly with `npm run replay`. |
+| Check | Target (design §9, §13.4) | Milestone 1 | Milestone 2 | Comment |
+|-------|---------------------------|-------------|-------------|---------|
+| Invariants broken | none | none | none | Now includes: no parent under 13 at a child's birth; the dead belong to no household or partnership; school status and records agree. |
+| Significant feed items by source | player ≥ 50%, NPC ≈ 25%, structural ≈ 15%, chance ≤ 10% | 36 / 0 / 56 / 8 | player 37%, NPC 22%, structural 38%, chance 4% | Family events brought the NPC share to target. Structural is still high and player low, because birthdays and school milestones outnumber things the player does. |
+| Decisions opened per year | within the pacing budget | 0.00–0.11 | 0.46 in adolescence, 0.23 in early adulthood, about 0.1 elsewhere | Under budget everywhere. |
+| Feed lines per life | — | 112 | 169 | Childhood and school years now read as a story; adult years are still nearly empty. |
+| Lives in which some text variant appears more than twice | none | 99% | 99% | Still missed. The repeats are almost all year-summary sentences for quiet adult years, which will stop being quiet. |
+| Computing time per simulated year | under 20 ms in Node | 0.14 ms | 0.9 ms | A family of five or six is simulated each month. 20,000 lives take six minutes on four cores. |
+| Time for one year in the browser | under 150 ms | about 40 ms | not re-measured | Played through to 27 in headless Chromium with no errors. |
 
 ## Not yet calibrated
 
-Everything else in DESIGN.md §13. The values listed there for life expectancy and infant mortality
-have now been checked against the source tables; the rest are still written from memory and will
-be pinned as their data files are created.
+Everything else in DESIGN.md §13. Values there marked from memory are pinned as their data files
+are created.

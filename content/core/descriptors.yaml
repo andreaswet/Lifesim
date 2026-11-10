@@ -32,10 +32,9 @@
 
 # What an overfull week feels like.
 - id: strain
-  margin: 0.04
+  margin: 0.08
   notableFromAge: 8
   bands:
-    - { id: rested, upTo: 0.25, text: not short of time }
-    - { id: stretched, upTo: 0.55, text: stretched thin }
-    - { id: worn_down, upTo: 0.8, text: worn down }
+    - { id: rested, upTo: 0.45, text: not short of time }
+    - { id: worn_down, upTo: 0.8, text: stretched thin and tired }
     - { id: exhausted, text: exhausted }

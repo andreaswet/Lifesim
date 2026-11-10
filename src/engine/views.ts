@@ -91,6 +91,8 @@ const PURE_FNS = {
   ordinal: (n: number) => ordinalWord(n),
   span: (months: number) => spanWords(months),
   cap: (s: string) => (s.length ? s[0]!.toUpperCase() + s.slice(1) : s),
+  /** A grade average the way a transcript prints it: "3.50". */
+  gpa: (n: number) => n.toFixed(2),
   /** Whole dollars with separators: "$12,300". The currency symbol follows the country pack later. */
   money: (n: number) => '$' + Math.round(n).toLocaleString('en-US'),
 }

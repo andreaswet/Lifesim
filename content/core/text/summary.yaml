@@ -149,6 +149,8 @@
       text: "You will always remember this as the year one of your parents moved out."
     - when: "fact.highlight == 'parent_job_lost'"
       text: "It was a year of worry about money at home."
+    - when: "fact.highlight == 'parent_job_lost'"
+      text: "A wage stopped coming in this year, and you learned what the adults sound like when they are frightened."
     - when: "fact.highlight == 'family_death'"
       text: "There was a death in the family this year, and the rest of the year arranged itself around it."
     - when: "fact.highlight == 'family_death'"

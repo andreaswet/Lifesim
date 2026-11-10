@@ -3,8 +3,9 @@
 A deep, grounded, text-based life simulator: one person's life in the United States from birth to
 death, then on through their children. Browser app in TypeScript with no backend.
 
-**Status:** Milestone 1 of 7 — the engine core. A life can be played from birth to death; time,
-aging and mortality work, and almost nothing else exists yet (no family, school, work or money).
+**Status:** Milestone 2 of 7. A life can be played from birth to death: you are born into a
+family drawn from US birth data, grow up in it, and go through school and college. Work, money of
+your own, friends and partners do not exist yet, so adult life is still quiet.
 
 - [Design document](docs/DESIGN.md) — what is being built and why.
 - [Calibration](docs/CALIBRATION.md) — how the simulation compares with real US statistics so far.
@@ -19,13 +20,14 @@ npm run dev        # play in the browser
 npm test           # unit, property, determinism, golden-life and calibration smoke tests
 npm run content    # compile and validate the content/ directory
 npm run batch -- --lives 5000 --strategy persona    # simulate lives headlessly and compare with targets
+npm run batch -- --lives 8000 --no-text --write-norms   # re-norm school achievement after changing the learning model
 npm run replay -- some-save.json                    # rebuild a save from its seed and choices
 npm run build      # type-check and build the static site into dist/
 ```
 
 Playing: **Enter** advances to the next birthday, **S** a season, **M** a month. **1–9** answer a
 decision, **?** asks why the latest explainable thing happened, **/** searches the life log, and
-**T R H L V** switch sections.
+**T F C R H L V** switch sections.
 
 ## How it is organized
 
@@ -37,7 +39,7 @@ decision, **?** asks why the latest explainable thing happened, **/** searches t
 | `src/app/` | Hosts the engine in a Web Worker, autosaves, and defines what the interface may see. |
 | `src/ui/` | The interface. It receives the player's view, never the raw state. |
 | `src/tools/` | Batch simulator, AI players, content validator, replay. |
-| `content/` | Authored data: events, processes, text, body curves, and the US country pack (life tables, names). |
+| `content/` | Authored data: events, processes, text, body curves, and the US country pack (life tables, family and birth data, the school system, states, names). |
 | `tests/` | The test suite. |
 
 Adding an event, a process or a piece of text means editing files under `content/` only.
