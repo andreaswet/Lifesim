@@ -142,6 +142,8 @@ export function playYear(state: GameState, strategy: Strategy, env: EngineEnv): 
       state = act(state, 'work.quit', env)
       state = step(state, { type: 'setPolicy', policy: { search: 'none' } }, env).state
     } else if (rng.chance(work.stepBack, 'stepBack', age)) state = step(state, { type: 'setPolicy', policy: { search: 'open' } }, env).state
+    // Walking out of a job, as other people do at the same age; the search for the next one goes on.
+    else if (rng.chance(work.quit, 'quit', age)) state = act(state, 'work.quit', env)
   }
 
   // Strategy players for money: the saver lives small and puts everything away; the spender does neither.

@@ -57,7 +57,8 @@ k12:
       male: 0
   # Hours a week a pupil has for homework and training before it starts to cost them. More than
   # this builds strain, which lowers effort and learning.
-  load: { freeHours: 15, perConscientiousness: 2, strainRiseMonths: 6, strainFallMonths: 3, fullStrainAtExtraHours: 8 }
+  # A job alongside school costs nothing for the first `jobHoursFree` hours a week.
+  load: { freeHours: 15, jobHoursFree: 15, perConscientiousness: 2, strainRiseMonths: 6, strainFallMonths: 3, fullStrainAtExtraHours: 8 }
 
   # Report-card grades on the 4-point scale, per subject.
   grades:

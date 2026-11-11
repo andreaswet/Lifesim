@@ -163,7 +163,7 @@ studentLoans:
   protectedIncome: 1.5
   forgivenAfterMonths: 240
   # Private loans: the share of students with need still uncovered who take one, and what it costs over the federal rate.
-  privateShare: 0.35
+  privateShare: 0.15
   privateSpread: 3.5
 
 # The savings and debts of adults who enter the simulation already grown: median net worth by

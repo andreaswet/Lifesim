@@ -199,12 +199,8 @@ function makeOffer(ctx: Ctx, person: Person, occ: Occ, outside: boolean): Offer 
   const level = levelFor(content, person, occ)
   const current = person.work?.job
   const hours = current && outside && !studying(person) ? Math.max(current.hoursPerWeek, occ.hours * (current.hoursPerWeek < 30 ? 0.6 : 1)) : hoursFor(ctx, person, occ)
-  let salary = salaryFor(ctx, person, occ, level, hours, orgPay, rng.normal('work.offer.luck', ...key))
-  // Nobody is approached with an offer below what they already make for the same work.
-  if (current && outside && current.occupation === occ.id) {
-    const raise = L.search.outsideRaise[0] + (L.search.outsideRaise[1] - L.search.outsideRaise[0]) * rng.float('work.offer.raise', ...key)
-    salary = Math.max(salary, Math.round(((current.salary * hours) / current.hoursPerWeek) * (1 + raise)))
-  }
+  // What the market pays: an offer is never a fixed step up from the current salary.
+  const salary = salaryFor(ctx, person, occ, level, hours, orgPay, rng.normal('work.offer.luck', ...key))
   const [lo, hi] = content.bundle.country.money.saving.matchRate
   return {
     occupation: occ.id,
@@ -560,10 +556,14 @@ function employedMonth(ctx: Ctx, person: Person, work: Work, job: Job): void {
   const level = searchLevel(content, person)
   if (!work.offer && level.outside > 0 && job.level >= 0 && rng.chance(Math.min(0.5, interpolate(L.search.outsideOffer, age) * level.outside), 'work.outside', person.id, state.now)) {
     const wanted = work.target ? content.occupations.get(work.target) : undefined
-    const other = wanted && wanted.id !== occ.id && qualifies(state, content, person, wanted) ? wanted : rng.chance(0.3, 'work.outside.switch', person.id, state.now) ? pickOccupation(ctx, person, 'outside', state.now) : occ
+    // Most approaches are for the same kind of work; someone qualified well above their job is more
+    // often approached for work that fits their schooling.
+    const overqualified = educationRank(person.education.level) - educationRank(occ.education) >= 2
+    const switchChance = overqualified ? L.search.switchOverqualified : L.search.switch
+    const other = wanted && wanted.id !== occ.id && qualifies(state, content, person, wanted) ? wanted : rng.chance(switchChance, 'work.outside.switch', person.id, state.now) ? pickOccupation(ctx, person, 'outside', state.now) : occ
     // Nobody is approached with a job that pays less by the hour, unless it is the work they are after.
     const offer = other ? makeOffer(ctx, person, other, true) : null
-    if (offer && (offer.occupation === work.target || offer.salary / offer.hoursPerWeek > (job.salary / job.hoursPerWeek) * 1.02)) presentOffer(ctx, person, work, offer)
+    if (offer && (offer.occupation === work.target || offer.salary / offer.hoursPerWeek > (job.salary / job.hoursPerWeek) * (1 + L.search.switchGain))) presentOffer(ctx, person, work, offer)
   }
 }
 
@@ -742,6 +742,12 @@ function situationDefaults(ctx: Ctx, person: Person, work: Work): void {
   }
 }
 
+/** Signs of trouble this worker has already seen during the employer's current spell of trouble. */
+function signalsSeen(worker: Person, spell: string): number {
+  const seen = String(worker.flags['work.signals'] ?? '')
+  return seen.startsWith(`${spell}#`) ? Number(seen.slice(spell.length + 1)) : 0
+}
+
 function orgsMonth(ctx: Ctx): void {
   const { state, content, rng } = ctx
   const T = laborOf(content).employers.trouble
@@ -771,9 +777,13 @@ function orgsMonth(ctx: Ctx): void {
     if (org.health === 'quiet') {
       // The signs (design §9.2): seen by people who have been there long enough to know what is normal.
       for (const worker of workers) {
-        if (!rng.chance(T.signalPerMonth, 'org.signal', id, worker.id, state.now)) continue
+        // Two signs a spell is enough to read the situation; more would only crowd the story.
+        const spell = `${id}:${org.since}`
+        const shown = signalsSeen(worker, spell)
+        if (shown >= T.signalsPerSpell || !rng.chance(T.signalPerMonth, 'org.signal', id, worker.id, state.now)) continue
+        worker.flags['work.signals'] = `${spell}#${shown + 1}`
         const which = rng.pick(['hiring_freeze', 'departures', 'late_payments', 'cutbacks'] as const, 'org.signalKind', id, worker.id, state.now)
-        const noticed = state.now - worker.work!.job!.started >= 6
+        const noticed = state.now - worker.work!.job!.started >= T.noticeAfterMonths
         tell(ctx, worker, 'work_signal', { which, employer: org.name, manager: worker.work!.job!.manager }, { hidden: !noticed })
       }
       const turn = rng.float('org.turn', id, state.now)
@@ -942,9 +952,9 @@ registerAction('work.retire', {
 })
 
 /** Yearly chance that this person retires of their own accord, for AI players (who act once a year). */
-export function workChances(state: GameState, content: Prepared, person: Person): { retire: number; stepOut: number; stepBack: number } {
+export function workChances(state: GameState, content: Prepared, person: Person): { retire: number; stepOut: number; stepBack: number; quit: number } {
   const work = person.work
-  if (!work || work.status === 'retired') return { retire: 0, stepOut: 0, stepBack: 0 }
+  if (!work || work.status === 'retired') return { retire: 0, stepOut: 0, stepBack: 0, quit: 0 }
   const P = laborOf(content).participation
   const age = ageYears(person, state.now)
   const inRange = age >= P.stepOut.fromAge && age < P.stepOut.untilAge && !studying(person)
@@ -952,6 +962,7 @@ export function workChances(state: GameState, content: Prepared, person: Person)
     retire: retireChance(content, age),
     stepOut: inRange && (work.status === 'employed' || work.status === 'unemployed') ? 1 - dpow(1 - stepOdds(state, content, person).out, 12) : 0,
     stepBack: inRange && work.status === 'home' ? 1 - dpow(1 - stepOdds(state, content, person).back, 12) : 0,
+    quit: work.job ? 1 - dpow(1 - interpolate(laborOf(content).separations.quitPerMonth, age), 12) : 0,
   }
 }
 

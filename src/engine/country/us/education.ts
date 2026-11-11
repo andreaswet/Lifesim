@@ -124,9 +124,11 @@ function strainMonth(ctx: Ctx, person: Person): void {
   const study = k12.study.levels.find((l) => l.id === person.policies.study)
   const activity = content.bundle.body.activityLevels[content.activityIndex.get(person.policies.activity) ?? 0]
   const enrolled = person.education.status === 'k12' || person.education.status === 'college'
-  // A job on top of school counts in full; for someone out of school, only the hours beyond a normal week.
+  // A job on top of school costs little up to about fifteen hours a week and a good deal beyond
+  // (Darolia 2014; Stinebrickner & Stinebrickner 2003); for someone out of school, only the
+  // hours beyond a normal week count.
   const job = workHours(content, person)
-  const hours = (enrolled ? (study?.hoursPerWeek ?? 0) + job : Math.max(0, job - 40)) + (activity?.hoursPerWeek ?? 0)
+  const hours = (enrolled ? (study?.hoursPerWeek ?? 0) + Math.max(0, job - k12.load.jobHoursFree) : Math.max(0, job - 40)) + (activity?.hoursPerWeek ?? 0)
   const free = k12.load.freeHours + k12.load.perConscientiousness * (person.traits.conscientiousness ?? 0)
   const target = clamp((hours - free) / k12.load.fullStrainAtExtraHours, 0, 1)
   person.strain = approach(person.strain, target, k12.load.strainRiseMonths, k12.load.strainFallMonths)

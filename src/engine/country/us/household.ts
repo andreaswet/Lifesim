@@ -687,6 +687,8 @@ function loseHome(ctx: Ctx, home: Household, which: 'evicted' | 'foreclosed'): v
   const H = content.bundle.country.money.housing
   const payer = home.housing.payer ? state.people[home.housing.payer] : undefined
   if (!payer) return
+  // A choice about this home that is still waiting no longer applies.
+  state.decisions = state.decisions.filter((d) => !(d.source === 'system:home.behind' && home.members.includes(d.subjectId)))
   if (which === 'foreclosed') sellHome(ctx, home, H.mortgage.forcedSale)
   creditMark(state, payer)
   ensureMoney(payer).credit.evicted = state.now
@@ -1028,8 +1030,14 @@ function moveBack(ctx: Ctx, person: Person): void {
   const { state } = ctx
   const old = householdOf(state, person)
   const refuge = parentalHome(state, person)
-  if (!old || !refuge) return
-  for (const id of [...old.members]) joinHousehold(state, state.people[id]!, refuge)
+  // Only someone who pays for a rented home can give it up; they take their own unit and its children.
+  if (!old || !refuge || old.housing.tenure === 'own' || old.housing.payer !== unitHead(state, person).id) return
+  const unit = unitAdults(state, unitHead(state, person)).map((a) => a.id)
+  const movers = old.members.filter((id) => {
+    const p = state.people[id]!
+    return unit.includes(id) || (ageYears(p, state.now) < ADULT && [p.motherId, p.fatherId].some((m) => m !== null && unit.includes(m)))
+  })
+  for (const id of movers) joinHousehold(state, state.people[id]!, refuge)
   dropIfEmpty(state, old)
   tell(ctx, person, 'moved', { which: 'back', rent: 0, shared: false, tier: refuge.neighborhood }, { significant: true, source: 'player' })
 }

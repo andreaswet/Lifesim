@@ -129,6 +129,6 @@ export function healthCover(money: MoneyDef, who: { age: number; offered: boolea
   const subsidized = who.povertyRatio >= 1 || who.expansionState
   const toPay = subsidized ? Math.min(premium, interpolate(H.marketplace.contribution, who.povertyRatio) * who.income) : premium
   // How much people will pay before going without varies: the threshold is spread around its typical value.
-  if (toPay <= 2 * who.willingness * H.marketplace.buysIfUnder * Math.max(who.income, 1)) return { cover: 'marketplace', cost: toPay + H.outOfPocket.insured }
+  if (toPay <= 3 * who.willingness * H.marketplace.buysIfUnder * Math.max(who.income, 1)) return { cover: 'marketplace', cost: toPay + H.outOfPocket.insured }
   return { cover: 'none', cost: H.outOfPocket.uninsured }
 }

@@ -1526,7 +1526,7 @@ Added while building Milestone 3:
     with months worked and fades when unused toward a floor long practice raises (§7.5).
 46. **Employers are generated when someone is hired** and exist as long as anyone works there.
     A struggling employer goes from sound to quiet trouble, with warning signs that people who
-    have been there six months or more notice, and then either recovers or lays people off and
+    have been there a few months notice, and then either recovers or lays people off and
     sometimes closes. Most jobs are lost this way, as in life. This is engine logic for now;
     it becomes a data-defined process when processes can belong to an organization (Milestone 6).
 47. **Getting a job is a monthly draw per application** with the named-factor model of §3.2: the

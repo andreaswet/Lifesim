@@ -47,7 +47,10 @@ employers:
     layoffMonths: [3, 6]
     laidOffPerMonth: 0.25
     closes: 0.15
-    signalPerMonth: 0.35
+    signalPerMonth: 0.5
+    signalsPerSpell: 2
+    # People notice the signs once they have been somewhere long enough to know what is normal.
+    noticeAfterMonths: 3
 
 search:
   source: "BLS CPS gross flows: about a quarter of the unemployed find work in a month (memory); callback studies as cited"
@@ -75,8 +78,10 @@ search:
     byGroup: { black: -0.31, hispanic: -0.22 }
   # Monthly chance that someone in work hears of a better job, by age. Set against median tenure
   # of 3.9 years and 12 to 13 jobs between 18 and 56 (BLS; NLSY79).
-  outsideOffer: [[16, 0.05], [22, 0.045], [28, 0.02], [35, 0.008], [45, 0.005], [65, 0.002]]
-  outsideRaise: [0.02, 0.10]
+  outsideOffer: [[16, 0.07], [22, 0.06], [28, 0.025], [35, 0.009], [45, 0.005], [65, 0.002]]
+  switchGain: 0.03
+  switch: 0.3
+  switchOverqualified: 0.7
   sexTyping: 1.0
   levels:
     - { id: none, label: Not looking, description: "You are not looking and do not want to hear about openings.", applications: 0, outside: 0 }
@@ -136,8 +141,9 @@ skill:
 
 separations:
   source: "BLS JOLTS quits and discharges (memory)"
-  # Leaving a job for no job, by age.
-  quitPerMonth: [[16, 0.045], [20, 0.03], [25, 0.01], [30, 0.004], [45, 0.0012], [60, 0.0012]]
+  # Leaving a job for no job, by age. Most real quits are straight to another job; those are the
+  # outside offers above.
+  quitPerMonth: [[16, 0.015], [20, 0.01], [25, 0.005], [30, 0.003], [45, 0.0012], [60, 0.0012]]
   # Layoffs fall on newer staff first: exposure is divided by one plus years of tenure over this.
   tenureShield: 6
   # Let go with no warning at all.

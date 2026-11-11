@@ -194,6 +194,8 @@ export const LaborDef = z.strictObject({
       laidOffPerMonth: share,
       closes: share,
       signalPerMonth: share,
+      signalsPerSpell: z.number().int().positive(),
+      noticeAfterMonths: z.number(),
     }),
   }),
   search: z.strictObject({
@@ -212,7 +214,11 @@ export const LaborDef = z.strictObject({
     callbacks: z.strictObject({ source: src, byGroup: z.record(z.string(), z.number()) }),
     /** Chance per month that someone in work, and open to it, hears of something better; by age. */
     outsideOffer: Curve,
-    outsideRaise: z.tuple([z.number(), z.number()]),
+    /** How much better by the hour an outside offer must pay to be made at all. */
+    switchGain: z.number(),
+    /** Chance that an outside offer is for a different line of work; higher for the overqualified. */
+    switch: share,
+    switchOverqualified: share,
     /** How strongly people favour work typical of their own sex when choosing what to look for. */
     sexTyping: z.number(),
     levels: z.array(Level.extend({ applications: z.number(), outside: z.number() })).min(2),
@@ -444,7 +450,7 @@ export const EducationDef = z.strictObject({
       strain: z.number(),
       engagementBySex: z.strictObject({ source: src, female: z.number(), male: z.number() }),
     }),
-    load: z.strictObject({ freeHours: z.number(), perConscientiousness: z.number(), strainRiseMonths: z.number(), strainFallMonths: z.number(), fullStrainAtExtraHours: z.number() }),
+    load: z.strictObject({ freeHours: z.number(), jobHoursFree: z.number(), perConscientiousness: z.number(), strainRiseMonths: z.number(), strainFallMonths: z.number(), fullStrainAtExtraHours: z.number() }),
     grades: z.strictObject({ source: src, mean: z.number(), achievement: z.number(), effort: z.number(), noise: z.number() }),
     courseLevels: z.array(z.strictObject({ id: z.string(), label: z.string(), fromGrade: z.number().int(), recommendedZ: z.number(), gradePenalty: z.number(), rigor: z.number() })).min(1),
     disengagement: z.strictObject({ months: z.number(), failing: z.number(), lowAchievement: z.number(), disruption: z.number(), lowInvolvement: z.number(), conscientiousness: z.number() }),
