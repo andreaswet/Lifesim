@@ -14,6 +14,7 @@ import { Command, ENGINE_VERSION, SCHEMA_VERSION, StartOptions, livingPeople, pl
 import { rulesFor } from './country'
 import { actionById } from './systems/actions'
 import { updateBody } from './systems/body'
+import { economyMonth, initWorld } from './systems/economy'
 import { chooseAutomatically, lapseDecisions, resolveDecision } from './systems/decisions'
 import { runEvents } from './systems/events'
 import { mortalityTick } from './systems/mortality'
@@ -55,19 +56,22 @@ function makeCtx(state: GameState, env: EngineEnv): Ctx {
 
 /**
  * One month (design §5.2). Each phase runs for everyone before the next begins, so nobody acts on
- * information from later in the same month. Phases for systems that do not exist yet (economy,
- * work, money, relationships) will slot in at their documented positions.
+ * information from later in the same month. Phases for systems that do not exist yet
+ * (relationships, the full routine) will slot in at their documented positions.
  */
 export function tick(ctx: Ctx): void {
   const { state } = ctx
   const rules = rulesFor(ctx.content.bundle.country.id)
   ctx.rng.beginTick()
 
+  economyMonth(ctx) //            1. world: the cycle, prices, pay, rates, markets
   lapseDecisions(ctx) //          2. schedule: deadlines that have passed
   runProcesses(ctx) //            2. processes
   for (const p of livingPeople(state)) updateBody(ctx, p) //     3–4. routine realized; body
   for (const p of livingPeople(state)) rules.educationMonth(ctx, p) // 5. school
-  rules.familyMonth(ctx) //       5–6, 8. parents' work, household money, partnerships, births
+  rules.workMonth(ctx) //         5. work: employers, jobs, searches, reviews
+  rules.familyMonth(ctx) //       8. partnerships, births
+  rules.moneyMonth(ctx) //        6. money: pay, tax, bills, spending, saving, housing
   for (const p of livingPeople(state)) mortalityTick(ctx, p) //  7. health hazards
   if (state.phase === 'ended') return // the month in which the player died is not finished
   for (const p of livingPeople(state)) runEvents(ctx, p) //      10. event selection
@@ -94,8 +98,11 @@ export function createLife(options: { seed: string; start?: Partial<StartOptions
     phase: 'alive',
     playerId: 'p1',
     lineage: [],
+    world: initWorld(content, rng, born),
     people: {},
     households: {},
+    orgs: {},
+    accounts: {},
     processes: {},
     decisions: [],
     log: [],
@@ -179,6 +186,25 @@ export function step(input: GameState, commandInput: Command, env: EngineEnv): S
         const from = self.policies.activity
         self.policies.activity = activity
         emitFact(ctx, { kind: 'activity_changed', subject: self, data: { from, to: activity, direction: env.content.activityIndex.get(activity)! > (env.content.activityIndex.get(from) ?? 0) ? 'up' : 'down' } }, { sourceClass: 'player' })
+      }
+      // How hard to work, whether to look for work, how to spend and how to save (design §2.2).
+      const country = env.content.bundle.country
+      const age = ageInYears(self.born, state.now)
+      const standing: Array<{ key: 'effort' | 'search' | 'lifestyle' | 'saving'; levels: Array<{ id: string; label: string }>; fromAge: number }> = [
+        { key: 'effort', levels: country.labor.performance.levels, fromAge: 16 },
+        { key: 'search', levels: country.labor.search.levels, fromAge: 16 },
+        { key: 'lifestyle', levels: country.money.living.levels, fromAge: 18 },
+        { key: 'saving', levels: country.money.saving.levels, fromAge: 18 },
+      ]
+      for (const { key, levels, fromAge } of standing) {
+        const to = command.policy[key]
+        if (to === undefined || to === self.policies[key]) continue
+        const ids = levels.map((l) => l.id)
+        if (!ids.includes(to)) throw new EngineError(`Unknown ${key} level '${to}'`)
+        if (age < fromAge) throw new EngineError(`Too young to decide that: it is yours to set from ${fromAge}`)
+        const from = self.policies[key]
+        self.policies[key] = to
+        emitFact(ctx, { kind: 'policy_changed', subject: self, data: { which: key, from, to, label: levels.find((l) => l.id === to)?.label ?? to, direction: ids.indexOf(to) > ids.indexOf(from) ? 'up' : 'down' } }, { sourceClass: 'player' })
       }
       break
     }

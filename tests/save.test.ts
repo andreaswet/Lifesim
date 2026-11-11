@@ -37,21 +37,44 @@ describe('saves', () => {
   })
 
   it('upgrades old saves through a chain of migrations, one version at a time', () => {
-    // A pretend future: version 3 renames a stock and version 4 adds a field. Each migration moves
+    // A pretend future: version 4 renames a stock and version 5 adds a field. Each migration moves
     // a save forward exactly one version; the loader runs them in order.
+    const now = SCHEMA_VERSION
     const migrations: Record<number, Migration> = {
-      2: (state) => ({ ...state, renamed: true, meta: { ...(state.meta as object), schemaVersion: 3 } }),
-      3: (state) => {
+      [now]: (state) => ({ ...state, renamed: true, meta: { ...(state.meta as object), schemaVersion: now + 1 } }),
+      [now + 1]: (state) => {
         const { renamed: _renamed, ...rest } = state
-        return { ...rest, meta: { ...(state.meta as object), schemaVersion: 2 } }
+        return { ...rest, meta: { ...(state.meta as object), schemaVersion: now } }
       },
     }
     const file = exportSave(midLife)
-    // Run 2 → 3 → 4, where "4" happens to have today's shape, so the result must validate.
-    const upgraded = importSave(file, { migrations, targetVersion: 4 })
+    // Run now → now+1 → now+2, where the last happens to have today's shape, so the result must validate.
+    const upgraded = importSave(file, { migrations, targetVersion: now + 2 })
     expect(upgraded).toEqual(midLife)
     // With a step missing there is no path, and the loader says so.
-    expect(() => importSave(file, { migrations: { 2: migrations[2]! }, targetVersion: 4 })).toThrow(/no upgrade path from save format 3/)
+    expect(() => importSave(file, { migrations: { [now]: migrations[now]! }, targetVersion: now + 2 })).toThrow(new RegExp(`no upgrade path from save format ${now + 1}`))
+  })
+
+  it('loads a real Milestone 2 save and plays it on to the end', () => {
+    const text = readFileSync(fileURLToPath(new URL('./fixtures/save-v2.json', import.meta.url)), 'utf8')
+    expect(JSON.parse(text).schemaVersion).toBe(2)
+    let state = importSave(text)
+    expect(state.meta.schemaVersion).toBe(SCHEMA_VERSION)
+    expect(checkInvariants(state, realContent())).toEqual([])
+    const me = state.people.p1!
+    expect(me.education.status).toBe('college')
+    // The loans taken out before money existed are now a balance with a lender, to the cent.
+    expect(state.accounts['p1:student']).toBe(-Math.round(me.education.loans * 100))
+    // Working parents have a job that pays what their stand-in did.
+    const parents = [me.motherId, me.fatherId].map((id) => state.people[id!]!)
+    expect(parents.some((p) => p.work?.job && p.work.job.salary > 0)).toBe(true)
+    const view = perceive(state, realContent())
+    expect(view.family.members.length).toBeGreaterThan(1)
+
+    state = liveUntil(state, env, () => false)
+    expect(state.phase).toBe('ended')
+    expect(state.log.at(-1)!.fact.kind).toBe('obituary')
+    expect(checkInvariants(state, realContent())).toEqual([])
   })
 
   it('loads a real Milestone 1 save and plays it on to the end', () => {

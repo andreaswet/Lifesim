@@ -142,6 +142,7 @@ function yearSummary(fact: Fact, subject: Person, state: GameState, content: Pre
   else if (d.trend === 'up') sentences.push(one('summary.trend_up'))
   else if (d.trend === 'down') sentences.push(one('summary.trend_down'))
   if (typeof d.illnesses === 'number' && d.illnesses > 0) sentences.push(one('summary.illness'))
+  if (d.worth === 'up' || d.worth === 'down') sentences.push(one('summary.worth'))
   if (!sentences.some((s) => s !== null)) sentences.push(one('summary.quiet'))
 
   const body = join(sentences)
@@ -167,6 +168,7 @@ function obituary(fact: Fact, subject: Person, state: GameState, content: Prepar
   const one = (id: string): Picked | null => pick(byId(content, id), env, state, rng, id, subject.id)
   const parts: Array<Picked | null> = [one('obituary.opening'), one('obituary.family')]
   if (age >= 25) parts.push(one('obituary.school'))
+  if (age >= 25) parts.push(one('obituary.work'))
   // Thirty is roughly where a life has enough adult years for a habit to describe it.
   if (age >= 30) parts.push(pick(byId(content, 'obituary.activity'), env, state, rng, 'obituary.activity', subject.id))
   return join(parts)

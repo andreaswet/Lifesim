@@ -6,14 +6,15 @@
  * imported saves.
  *
  * Each milestone adds fields through save migrations (save.ts). Version 2 (Milestone 2) added
- * families, households, inherited traits and schooling.
+ * families, households, inherited traits and schooling. Version 3 (Milestone 3) added the
+ * economy, employers, jobs, money in double-entry accounts, housing and ethnicity.
  */
 
 import { z } from 'zod'
 import { EduLevel } from './content/country-schema'
 
-export const SCHEMA_VERSION = 2
-export const ENGINE_VERSION = '0.2.0'
+export const SCHEMA_VERSION = 3
+export const ENGINE_VERSION = '0.3.0'
 
 const MonthIndex = z.number().int()
 const Scalar = z.union([z.number(), z.string(), z.boolean(), z.null()])
@@ -22,7 +23,10 @@ export type Scalar = z.infer<typeof Scalar>
 export const Command = z.discriminatedUnion('type', [
   z.strictObject({ type: z.literal('advance'), until: z.enum(['month', 'season', 'birthday']) }),
   z.strictObject({ type: z.literal('decide'), decisionId: z.string(), optionId: z.string() }),
-  z.strictObject({ type: z.literal('setPolicy'), policy: z.strictObject({ activity: z.string().optional(), study: z.string().optional() }) }),
+  z.strictObject({
+    type: z.literal('setPolicy'),
+    policy: z.strictObject({ activity: z.string().optional(), study: z.string().optional(), effort: z.string().optional(), search: z.string().optional(), lifestyle: z.string().optional(), saving: z.string().optional() }),
+  }),
   /** Something the player starts themselves; the available ones are listed in the player's view. */
   z.strictObject({ type: z.literal('act'), action: z.string(), choice: z.string().optional() }),
 ])
@@ -34,6 +38,8 @@ export const StartOptions = z.strictObject({
   sex: z.enum(['male', 'female']).optional(),
   /** Two-letter state id to be born in; drawn by population if omitted. */
   state: z.string().optional(),
+  /** Group id from the country pack (design decision Q1); drawn from births if omitted. */
+  ethnicity: z.string().optional(),
   /**
    * Interactive play skips the player character's own death draws before this age. About 0.7% of
    * US children die before five; a life that ends in the first minutes is realistic but is not a
@@ -52,6 +58,8 @@ const Education = z.strictObject({
    * whose schooling happened before the simulation began (parents) or before this system existed.
    */
   status: z.enum(['not_yet', 'k12', 'left_k12', 'out', 'college', 'not_modeled']),
+  /** A certificate or graduate program under way: its id, when it began and when it ends. */
+  program: z.strictObject({ id: z.string(), started: MonthIndex, ends: MonthIndex }).nullable(),
   /** Highest level completed. */
   level: EduLevel,
   /** 0 is kindergarten, 12 is twelfth grade. Null when not in school. */
@@ -88,24 +96,95 @@ const Education = z.strictObject({
       unmetNeed: z.number(),
     })
     .nullable(),
-  /** Student loans owed, in dollars. Repayment arrives with the money system in Milestone 3. */
+  /** Student loans taken out, in start-year dollars. What is owed now is in the accounts. */
   loans: z.number(),
 })
 export type Education = z.infer<typeof Education>
 
-/** Milestone 2 stand-in for a job: enough for parents to have an income and to lose it. */
-const Work = z.strictObject({
-  /** Yearly earnings when working the hours below. */
-  earnings: z.number(),
-  hours: z.enum(['full', 'part', 'none']),
-  employed: z.boolean(),
-  unemployedSince: MonthIndex.nullable(),
+const Job = z.strictObject({
+  occupation: z.string(),
+  /** -1 while in paid training (an apprenticeship, an academy, a residency); otherwise the rung of the ladder. */
+  level: z.number().int(),
+  orgId: z.string(),
+  employer: z.string(),
+  manager: z.string(),
+  started: MonthIndex,
+  hoursPerWeek: z.number(),
+  /** Yearly pay for these hours, in the dollars of the day. */
+  salary: z.number(),
+  insured: z.boolean(),
+  /** Share of pay the employer will match in a retirement plan; 0 where there is no plan. */
+  match: z.number(),
+  pension: z.boolean(),
+  /** The wage index when pay was last set, so a raise can keep up with the going rate. */
+  payIndex: z.number(),
+  /** Slow stock, 0–1: how well the work is going. 0.5 is adequate. */
+  performance: z.number(),
+  /** Set when a review has warned that the job is at risk. */
+  warned: z.boolean(),
 })
+export type Job = z.infer<typeof Job>
+
+/** A working life (design §7.13). */
+const Work = z.strictObject({
+  /** none: has never looked for work. home: not looking. */
+  status: z.enum(['none', 'employed', 'unemployed', 'home', 'retired']),
+  job: Job.nullable(),
+  /** Mastery of each line of work, 0–1, and months spent in it. */
+  skills: z.record(z.string(), z.number()),
+  months: z.record(z.string(), z.number()),
+  history: z.array(z.strictObject({ occupation: z.string(), employer: z.string(), from: MonthIndex, to: MonthIndex, why: z.string() })),
+  /** When the current spell without work began, whether it began with a layoff, and benefits being drawn. */
+  since: MonthIndex.nullable(),
+  laidOff: z.boolean(),
+  insurance: z.strictObject({ weekly: z.number(), until: MonthIndex }).nullable(),
+  /** The line of work being looked for, if the person has set their mind on one. */
+  target: z.string().nullable(),
+  /** A job offer waiting for an answer. */
+  offer: z
+    .strictObject({ occupation: z.string(), level: z.number().int(), employer: z.string(), sector: z.string(), orgPay: z.number(), salary: z.number(), hoursPerWeek: z.number(), insured: z.boolean(), match: z.number(), pension: z.boolean(), outside: z.boolean() })
+    .nullable(),
+  /** Standing in the pay of whatever they do, as a z-score: fixed for life. */
+  payLevel: z.number(),
+  /** Earnings in each year worked, in start-year dollars: the record Social Security keeps. */
+  earnings: z.array(z.number()),
+  yearWages: z.number(),
+  /** Retirement benefit being drawn, and pension earned, per month in start-year dollars. */
+  benefit: z.strictObject({ claimedAt: MonthIndex, monthly: z.number() }).nullable(),
+  pension: z.number(),
+  pensionYears: z.number(),
+})
+export type Work = z.infer<typeof Work>
+
+/** A person's standing with lenders and the tax office (design §7.14). Balances are in the accounts. */
+const Money = z.strictObject({
+  credit: z.strictObject({
+    /** Slow stock, 0–1: how reliably bills have been paid. */
+    history: z.number(),
+    /** Months in which something went badly wrong: a default, an eviction, a foreclosure. */
+    marks: z.array(MonthIndex),
+    opened: MonthIndex.nullable(),
+    evicted: MonthIndex.nullable(),
+  }),
+  /** This calendar year so far, and last year until it is settled in April. Dollars of the day. */
+  tax: z.strictObject({ wages: z.number(), other: z.number(), withheld: z.number() }),
+  taxDue: z.strictObject({ wages: z.number(), other: z.number(), withheld: z.number() }).nullable(),
+  /** Consecutive months in which some bill went unpaid. */
+  missed: z.number().int(),
+  /** Months short of money for essentials in the last year. */
+  hardship: z.number(),
+  cover: z.enum(['employer', 'public', 'marketplace', 'medicare', 'none']),
+  /** Student loan repayment: the monthly payment, when it began, and whether it is tied to income. */
+  student: z.strictObject({ payment: z.number(), started: MonthIndex, incomeDriven: z.boolean() }).nullable(),
+})
+export type Money = z.infer<typeof Money>
 
 const Person = z.strictObject({
   id: z.string(),
   name: z.strictObject({ first: z.string(), family: z.string() }),
   sex: z.enum(['male', 'female']),
+  /** Group id from the country pack (design decision Q1). */
+  ethnicity: z.string(),
   born: MonthIndex,
   /** Day of the month, for prose and for ordering within the birth month. */
   birthDay: z.number().int().min(1).max(31),
@@ -130,9 +209,14 @@ const Person = z.strictObject({
   }),
   /** 0–1: the cost of asking more hours of oneself than there are. Lowers effort and learning. */
   strain: z.number(),
-  policies: z.strictObject({ activity: z.string(), study: z.string() }),
+  policies: z.strictObject({ activity: z.string(), study: z.string(), effort: z.string(), search: z.string(), lifestyle: z.string(), saving: z.string() }),
   education: Education,
+  /** Licenses and qualifications held. */
+  credentials: z.array(z.string()),
+  /** Null until the person first enters the labor market. */
   work: Work.nullable(),
+  /** Null until the person first handles money of their own. */
+  money: Money.nullable(),
   /** For a mother: the month her next child is due to be born, if one is coming. */
   nextBirth: MonthIndex.nullable(),
   flags: z.record(z.string(), Scalar),
@@ -149,8 +233,22 @@ const Household = z.strictObject({
   state: z.string(),
   /** Neighborhood income tier, 1 (poorest fifth) to 5. Sets school quality and peers. */
   neighborhood: z.number().int().min(1).max(5),
-  /** Yearly income in dollars, recomputed each month from its members. */
+  /** Yearly income before tax, in the dollars of the day, recomputed each month from its members. */
   income: z.number(),
+  housing: z.strictObject({
+    /** guest: taken in by family or friends, or a child's home whose adults are gone. */
+    tenure: z.enum(['rent', 'own', 'guest']),
+    /** Who pays for the home; null when nobody in it does. */
+    payer: z.string().nullable(),
+    /** Monthly rent in the dollars of the day, and the month it was last set. */
+    rent: z.number(),
+    rentSet: MonthIndex,
+    /** Months of rent or mortgage unpaid. */
+    arrears: z.number().int(),
+    mortgage: z.strictObject({ rate: z.number(), payment: z.number(), originated: MonthIndex, insurance: z.boolean() }).nullable(),
+    /** A room in a shared rental: `rent` is this household's share of the whole. */
+    shared: z.boolean(),
+  }),
   /** 0–1+: recent upheaval at home (a separation, a lost job, a death). Fades over about a year. */
   disruption: z.number(),
   /** How willing the parents are to pay toward college, around 1. */
@@ -158,6 +256,49 @@ const Household = z.strictObject({
   schools: z.strictObject({ elementary: z.string(), middle: z.string(), high: z.string(), quality: z.number() }),
 })
 export type Household = z.infer<typeof Household>
+
+/** The economy this month (design §7.1). Indexes are 1 in the month the life began. */
+const World = z.strictObject({
+  regime: z.enum(['expansion', 'recession', 'severe', 'recovery']),
+  regimeSince: MonthIndex,
+  recessions: z.number().int(),
+  /** Percent. */
+  unemployment: z.number(),
+  /** Percent a year, and the part of it that is a passing spike. */
+  inflation: z.number(),
+  spike: z.number(),
+  priceLevel: z.number(),
+  wageIndex: z.number(),
+  policyRate: z.number(),
+  mortgageRate: z.number(),
+  stockIndex: z.number(),
+  bondIndex: z.number(),
+  housingIndex: z.number(),
+  housingGrowth: z.number(),
+  /** Last month's return on shares, bonds and houses, as fractions. */
+  stockReturn: z.number(),
+  bondReturn: z.number(),
+  housingReturn: z.number(),
+  /** Each sector's demand relative to the start, and its drifting trend in percent a year. */
+  sectors: z.record(z.string(), z.strictObject({ index: z.number(), trend: z.number() })),
+})
+export type World = z.infer<typeof World>
+
+/** An employer (design §7.13): fictional, generated when someone is hired, kept while anyone works there. */
+const Org = z.strictObject({
+  id: z.string(),
+  name: z.string(),
+  sector: z.string(),
+  /** Pay relative to other employers, as a multiplier. */
+  pay: z.number(),
+  /** sound, quiet (in difficulty, with signs), or layoffs. */
+  health: z.enum(['sound', 'quiet', 'layoffs']),
+  since: MonthIndex,
+  until: MonthIndex,
+  /** Chance per month, in an ordinary economy, that it gets into difficulty. */
+  risk: z.number(),
+})
+export type Org = z.infer<typeof Org>
 
 const ProcessInstance = z.strictObject({
   id: z.string(),
@@ -268,8 +409,16 @@ export const GameState = z.strictObject({
   phase: z.enum(['alive', 'ended']),
   playerId: z.string(),
   lineage: z.array(z.string()),
+  world: World,
   people: z.record(z.string(), Person),
   households: z.record(z.string(), Household),
+  orgs: z.record(z.string(), Org),
+  /**
+   * Double-entry money (design §7.14), in whole cents, keyed "owner:kind". Every movement takes
+   * from one account and gives to another, so the balances always sum to zero. A debt is an
+   * account with a negative balance; the rest of the world holds the other side.
+   */
+  accounts: z.record(z.string(), z.number().int()),
   processes: z.record(z.string(), ProcessInstance),
   decisions: z.array(Decision),
   log: z.array(LifeLogEntry),

@@ -83,15 +83,27 @@ export function compileContent(files: ContentFiles, countryId = 'us'): ContentBu
   const tableMeta = read(`${country}/demographics/life-table.yaml`, FileSchemas.lifeTableMeta)
   const names = read(`${country}/demographics/names.yaml`, FileSchemas.names)
   const family = read(`${country}/demographics/family.yaml`, FileSchemas.family)
-  const earnings = read(`${country}/labor/earnings-stub.yaml`, FileSchemas.earnings)
+  const people = read(`${country}/demographics/people.yaml`, FileSchemas.people)
+  const economy = read(`${country}/economy/economy.yaml`, FileSchemas.economy)
+  const market = read(`${country}/labor/market.yaml`, FileSchemas.labor)
+  const occupations = read(`${country}/labor/occupations.yaml`, FileSchemas.occupations)
+  const tax = read(`${country}/tax/federal.yaml`, FileSchemas.tax)
+  const money = read(`${country}/money/household.yaml`, FileSchemas.money)
   const education = read(`${country}/education/system.yaml`, FileSchemas.education)
   const norms = read(`${country}/education/norms.yaml`, FileSchemas.norms)
   const schools = read(`${country}/education/schools.yaml`, FileSchemas.schools)
 
   const statesPath = `${country}/places/states.csv`
-  const states: Array<{ id: string; name: string; population: number }> = []
+  const states: Array<Record<string, string | number | boolean>> = []
   if (files[statesPath] === undefined) problems.push(`${statesPath}: file is missing`)
-  else for (const row of parseCsv(files[statesPath])) states.push({ id: row.id ?? '', name: row.name ?? '', population: Number(row.population) })
+  else {
+    for (const row of parseCsv(files[statesPath])) {
+      const state: Record<string, string | number | boolean> = { id: row.id ?? '', name: row.name ?? '' }
+      for (const column of ['population', 'rpp', 'rent', 'home', 'incomeTax', 'propertyTax', 'minWage', 'uiMax']) state[column] = Number(row[column])
+      state.medicaid = row.medicaid === '1'
+      states.push(state)
+    }
+  }
 
   const tablePath = `${country}/demographics/life-table.csv`
   const male: number[] = []
@@ -106,7 +118,7 @@ export function compileContent(files: ContentFiles, countryId = 'us'): ContentBu
     })
   }
 
-  if (problems.length > 0 || !stages || !body || !descriptors || !factors || !pacing || !countryDef || !tableMeta || !names || !family || !earnings || !education || !norms || !schools) {
+  if (problems.length > 0 || !stages || !body || !descriptors || !factors || !pacing || !countryDef || !tableMeta || !names || !family || !people || !economy || !market || !occupations || !tax || !money || !education || !norms || !schools) {
     throw new ContentError(problems)
   }
 
@@ -121,11 +133,11 @@ export function compileContent(files: ContentFiles, countryId = 'us'): ContentBu
     events,
     processes,
     text,
-    country: { ...countryDef, lifeTable: { ...tableMeta, male, female }, names, states, family, earnings, education, norms, schools },
+    country: { ...countryDef, lifeTable: { ...tableMeta, male, female }, names, states, family, people, economy, labor: { ...market, occupations }, tax, money, education, norms, schools },
   }
   // Parsing the assembled draft once more checks the life table and gives the engine one object
   // that is known to match the bundle schema exactly.
-  const parsed = ContentBundle.safeParse(draft satisfies ContentBundleInput)
+  const parsed = ContentBundle.safeParse(draft as unknown as ContentBundleInput)
   if (!parsed.success) throw new ContentError(parsed.error.issues.map((i) => `bundle: ${i.path.join('.')}: ${i.message}`))
 
   const semantic = validateContent(parsed.data)

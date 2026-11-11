@@ -7,6 +7,7 @@
 import { ageInYears, yearOf } from '../core/time'
 import { emitFact, type Ctx } from '../context'
 import type { Person } from '../state'
+import { netWorth } from './money'
 
 /**
  * How much each kind of event matters when one has to stand for the year. Milestone 6 replaces
@@ -20,6 +21,25 @@ const WEIGHT: Record<string, number> = {
   school_left: 8,
   college_left: 8,
   college_started: 7,
+  home_lost: 9,
+  job_lost: 8,
+  home_bought: 8,
+  retired: 8,
+  program_finished: 8,
+  hired: 7,
+  promoted: 7,
+  inheritance: 7,
+  moved: 6,
+  job_quit: 6,
+  hardship: 6,
+  program_started: 6,
+  housing_behind: 5,
+  benefit_claimed: 5,
+  student_loans_paid: 5,
+  home_sold: 5,
+  mortgage_denied: 4,
+  review: 4,
+  student_loans_due: 3,
   sibling_born: 6,
   admission: 5,
   college_chosen: 5,
@@ -82,12 +102,26 @@ export function yearSummary(ctx: Ctx, person: Person): void {
     if (entry.fact.kind === 'decision_opened') choices++
   }
 
+  // What the year did to the character's money, once it is theirs: in start-year dollars, so that
+  // rising prices alone do not read as getting richer.
+  let worth: 'up' | 'down' | 'flat' | null = null
+  const now = netWorth(state, person.id) / state.world.priceLevel
+  if (person.money && age >= 18) {
+    const before = typeof person.flags['money.worth'] === 'number' ? (person.flags['money.worth'] as number) : null
+    if (before !== null) {
+      const change = now - before
+      const matters = Math.max(1500, 0.08 * Math.abs(before))
+      worth = change > matters ? 'up' : change < -matters ? 'down' : 'flat'
+    }
+    person.flags['money.worth'] = Math.round(now)
+  }
+
   emitFact(
     ctx,
     {
       kind: 'year_summary',
       subject: person,
-      data: { age, year: yearOf(state.now), stage: content.stageFor(age), trend, cause: mainCause, illnesses, choices, quiet: significant === 0 && choices === 0, highlight },
+      data: { age, year: yearOf(state.now), stage: content.stageFor(age), trend, cause: mainCause, illnesses, choices, quiet: significant === 0 && choices === 0, highlight, worth, worthNow: Math.round(now * state.world.priceLevel) },
     },
     { sourceClass: 'system' },
   )

@@ -17,3 +17,22 @@
 - { id: adm_rigor, phrase: you had taken demanding courses, whenAgainst: you had taken few demanding courses }
 - { id: adm_competition, phrase: it was an easier year than most to get in, whenAgainst: more people applied that year than usual }
 - { id: eq_standing, phrase: you had been keeping up before you left school, whenAgainst: you had fallen a long way behind before you left school }
+- { id: adm_college_record, phrase: "your college grades were above what the program usually takes", whenAgainst: "your college grades were below what the program usually takes" }
+
+# Looking for work (design §7.13). The base is one application; these move its odds.
+- { id: job_market, phrase: employers were hiring freely, whenAgainst: few employers were hiring }
+- { id: job_sector, phrase: that line of work was growing, whenAgainst: that line of work had been shrinking for years, visibility: inferable }
+- { id: job_experience, phrase: you had real experience in the work, whenAgainst: you had little experience in the work }
+- { id: job_first, phrase: you had never held a job, whenAgainst: you had never held a job }
+- { id: job_gap, phrase: you had been out of work a long time, whenAgainst: you had been out of work a long time }
+- { id: job_age, phrase: of your age, whenAgainst: "employers are slower to hire people over fifty, though few will say so", visibility: inferable }
+- { id: job_interview, phrase: you come across well in an interview, whenAgainst: interviews do not show you at your best, visibility: inferable }
+- { id: job_fit, phrase: the work suits what you are good at, whenAgainst: the work does not play to your strengths, visibility: inferable }
+# Design decision Q1: a documented direct effect, stated in plain language.
+- { id: job_callbacks, phrase: of your background, whenAgainst: "studies that send out matched applications find that employers call back Black and Latino applicants less often than white applicants with the same record; you could not have seen it happen, but it counts against every application you send", visibility: inferable }
+
+# A mortgage application.
+- { id: loan_credit, phrase: your credit score was strong, whenAgainst: your credit score was weak }
+- { id: loan_burden, phrase: the payments were small against your income, whenAgainst: the payments would have taken a large share of your income }
+- { id: loan_down, phrase: you had a large down payment, whenAgainst: you had little to put down }
+- { id: loan_group, phrase: of your background, whenAgainst: "lenders turn down Black, Hispanic and Asian applicants somewhat more often than white applicants with the same finances; nothing in the letter says so", visibility: inferable }

@@ -8,12 +8,12 @@
  * luck: the same seed played two ways differs only through the choices made.
  */
 
-import { autoChoice, leavingChances, perceive, step, type EngineEnv, type GameState } from '../engine'
+import { autoChoice, homeChances, leavingChances, perceive, step, workChances, type EngineEnv, type GameState } from '../engine'
 import { KeyedRng } from '../engine/core/rng'
 import { ageInYears } from '../engine/core/time'
 import { player } from '../engine/state'
 
-export const STRATEGIES = ['persona', 'active', 'sedentary', 'random', 'striver', 'drifter'] as const
+export const STRATEGIES = ['persona', 'active', 'sedentary', 'random', 'striver', 'drifter', 'saver', 'spender'] as const
 export type Strategy = (typeof STRATEGIES)[number]
 
 /**
@@ -34,8 +34,12 @@ function setPolicy(state: GameState, policy: { activity?: string; study?: string
   return step(state, { type: 'setPolicy', policy }, env).state
 }
 
-function act(state: GameState, action: string, env: EngineEnv): GameState {
-  return perceive(state, env.content).actions.some((a) => a.id === action && a.choices.length === 0) ? step(state, { type: 'act', action }, env).state : state
+function act(state: GameState, action: string, env: EngineEnv, choice?: (ids: string[]) => string | undefined): GameState {
+  const offer = perceive(state, env.content).actions.find((a) => a.id === action)
+  if (!offer) return state
+  if (offer.choices.length === 0) return step(state, { type: 'act', action }, env).state
+  const picked = choice?.(offer.choices.map((c) => c.id))
+  return picked ? step(state, { type: 'act', action, choice: picked }, env).state : state
 }
 
 /** Plays one year: answers what is open, adjusts policy, advances to the next birthday. */
@@ -68,7 +72,7 @@ export function playYear(state: GameState, strategy: Strategy, env: EngineEnv): 
     if (strategy === 'active') state = setPolicy(state, { activity: levels[levels.length - 1]!.id }, env)
     else if (strategy === 'sedentary' && age >= 18) state = setPolicy(state, { activity: levels[0]!.id }, env)
     else if (strategy === 'random' && rng.chance(0.05, 'drift', age)) state = setPolicy(state, { activity: rng.pick(levels, 'level', age).id }, env)
-    else if ((strategy === 'persona' || strategy === 'striver' || strategy === 'drifter') && age === 18) {
+    else if (strategy !== 'random' && age === 18) {
       const index = rng.weighted(ADULT_ACTIVITY_SHARES.map(([, share]) => share), 'disposition')
       state = setPolicy(state, { activity: ADULT_ACTIVITY_SHARES[index]![0] }, env)
     }
@@ -101,6 +105,50 @@ export function playYear(state: GameState, strategy: Strategy, env: EngineEnv): 
     const self = player(state)
     if (self.education.status === 'left_k12') state = act(state, 'edu.equivalency', env)
     else state = act(state, 'edu.apply', env)
+  }
+
+  // Certificates and graduate school, leaving home, buying a home and retiring are also the
+  // player's own acts; every player takes them at the rates other people do. Where there is a
+  // choice to make, the character picks what their means suggest, as other people do.
+  {
+    const chances = leavingChances(state, env.content, player(state))
+    if (rng.chance(chances.certificate + chances.graduate, 'program', age)) {
+      const graduate = rng.chance(chances.graduate / Math.max(1e-9, chances.certificate + chances.graduate), 'programKind', age)
+      const programs = env.content.bundle.country.labor.programs
+      state = act(state, 'edu.program', env, (ids) => {
+        const open = programs.filter((p) => ids.includes(p.id) && (p.kind === 'graduate') === graduate)
+        const index = rng.weighted(open.map((p) => p.weight), 'programPick', age)
+        return index < 0 ? undefined : open[index]!.id
+      })
+    }
+    // Behind on the rent with family to go to: most people move back before the court date.
+    const self0 = player(state)
+    const own = self0.householdId ? state.households[self0.householdId] : undefined
+    if (own && own.housing.payer === self0.id && own.housing.tenure === 'rent' && own.housing.arrears >= 1 && rng.chance(0.9, 'doubleUp', age, state.now)) state = act(state, 'home.move_back', env)
+    const home = homeChances(state, env.content, player(state))
+    const income = player(state).work?.job?.salary ?? 0
+    const affordable = (ids: string[], costOf: (id: string) => number, share: number): string | undefined => {
+      const within = ids.filter((id) => costOf(id) <= income * share)
+      return within.length ? within[within.length - 1] : undefined
+    }
+    const view = (): ReturnType<typeof perceive> => perceive(state, env.content)
+    const priceIn = (action: string, id: string): number => Number((view().actions.find((a) => a.id === action)?.choices.find((c) => c.id === id)?.label.match(/\$([\d,]+)/)?.[1] ?? '0').replace(/,/g, ''))
+    if (rng.chance(home.moveOut, 'moveOut', age)) state = act(state, 'home.rent', env, (ids) => (age < 28 ? 'shared' : (affordable(ids.filter((id) => id !== 'shared'), (id) => priceIn('home.rent', id) * 12, 0.3) ?? 'cheap')))
+    else if (rng.chance(home.buy, 'buy', age)) state = act(state, 'home.buy', env, (ids) => affordable(ids, (id) => priceIn('home.buy', id) * 0.085, 0.28))
+    const work = workChances(state, env.content, player(state))
+    if (rng.chance(work.retire, 'retire', age)) state = act(state, 'work.retire', env)
+    else if (rng.chance(work.stepOut, 'stepOut', age)) {
+      // A spell out of work: leave the job if there is one, and stop looking.
+      state = act(state, 'work.quit', env)
+      state = step(state, { type: 'setPolicy', policy: { search: 'none' } }, env).state
+    } else if (rng.chance(work.stepBack, 'stepBack', age)) state = step(state, { type: 'setPolicy', policy: { search: 'open' } }, env).state
+  }
+
+  // Strategy players for money: the saver lives small and puts everything away; the spender does neither.
+  if (age >= 18 && (strategy === 'saver' || strategy === 'spender')) {
+    const self = player(state)
+    const want = strategy === 'saver' ? { lifestyle: 'frugal', saving: 'heavy' } : { lifestyle: 'free', saving: 'none' }
+    if (self.policies.lifestyle !== want.lifestyle || self.policies.saving !== want.saving) state = step(state, { type: 'setPolicy', policy: want }, env).state
   }
 
   return step(state, { type: 'advance', until: 'birthday' }, env).state

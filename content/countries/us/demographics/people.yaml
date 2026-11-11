@@ -1,0 +1,53 @@
+# Race and ethnicity (design decision Q1). Every person belongs to one of these groups, drawn
+# from US births. Most of what differs between groups in a life enters through the family a child
+# is born into: the parents' schooling, whether they are married, what they own. Those
+# differences are here. The few documented direct effects are with the systems they act in, each
+# with its source: hiring callbacks in labor/market.yaml, mortgage approval in money/household.yaml.
+#
+# All figures were written from memory of the cited tables and are to be pinned.
+source: "NCHS, Births: Final Data for 2023 (race and Hispanic origin of mother; education; marital status); Federal Reserve SCF 2022 (wealth); Census HVS 2023 (homeownership)"
+
+# Chance that both parents belong to the same group. A child of parents from different groups is
+# counted in the last group.
+sameGroup: 0.88
+
+# `unmarried` shifts the log-odds that a birth is to an unmarried mother, given her schooling.
+# `wealth` is median net worth relative to other families of the same income, age and schooling
+# (Aladangady, Chang & Krimmel 2023 find large gaps remain after such controls), and `owning`
+# shifts the log-odds of owning a home.
+groups:
+  - id: white
+    label: White
+    share: 0.502
+    motherEducation: { less_than_hs: 0.06, high_school: 0.22, some_college: 0.19, associate: 0.09, bachelor: 0.27, graduate: 0.17 }
+    unmarried: -0.3
+    wealth: 1.2
+    owning: 0.3
+  - id: hispanic
+    label: Hispanic or Latino
+    share: 0.261
+    motherEducation: { less_than_hs: 0.24, high_school: 0.34, some_college: 0.19, associate: 0.07, bachelor: 0.11, graduate: 0.05 }
+    unmarried: 0.15
+    wealth: 0.65
+    owning: -0.3
+  - id: black
+    label: Black
+    share: 0.136
+    motherEducation: { less_than_hs: 0.12, high_school: 0.36, some_college: 0.25, associate: 0.09, bachelor: 0.11, graduate: 0.07 }
+    unmarried: 1.2
+    wealth: 0.45
+    owning: -0.7
+  - id: asian
+    label: Asian
+    share: 0.062
+    motherEducation: { less_than_hs: 0.05, high_school: 0.12, some_college: 0.09, associate: 0.05, bachelor: 0.36, graduate: 0.33 }
+    unmarried: -1.1
+    wealth: 1.15
+    owning: 0.0
+  - id: other
+    label: Multiracial or another group
+    share: 0.039
+    motherEducation: { less_than_hs: 0.10, high_school: 0.28, some_college: 0.24, associate: 0.09, bachelor: 0.18, graduate: 0.11 }
+    unmarried: 0.3
+    wealth: 0.7
+    owning: -0.3

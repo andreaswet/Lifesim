@@ -5,6 +5,7 @@
 
 import { compileExpr, compileTemplate, type Expr, type Template } from '../core/expr'
 import { dlog, dpow, interpolate } from '../core/dmath'
+import type { OccupationDef, LaborDef } from './country-schema'
 import type { ContentBundle, DecisionSpec, DescriptorDef, Effect, EventDef, FactSpec, FactorDef, Hazard, ProcessDef, StockId, TextDef } from './schema'
 
 export interface CFact {
@@ -15,7 +16,7 @@ export interface CFact {
 
 export type CEffect =
   | { t: 'adjust'; stock: StockId; delta: Expr; cause: string }
-  | { t: 'setPolicy'; activity: string | null; study: string | null }
+  | { t: 'setPolicy'; policy: Record<string, string> }
   | { t: 'setFlag'; name: string; value: Expr }
   | { t: 'startProcess'; def: string }
   | { t: 'emit'; fact: CFact }
@@ -96,6 +97,9 @@ export interface Prepared {
   descriptors: Map<string, DescriptorDef>
   factors: Map<string, FactorDef>
   activityIndex: Map<string, number>
+  occupations: Map<string, OccupationDef>
+  /** The program that awards each credential, where one does. */
+  programByCredential: Map<string, LaborDef['programs'][number]>
   /** Life stage id for an age in whole years. */
   stageFor(age: number): string
   /** Annual probability of death from the life table, including the open-interval rule. */
@@ -110,7 +114,7 @@ function cFact(f: FactSpec): CFact {
 
 function cEffect(e: Effect): CEffect {
   if ('adjust' in e) return { t: 'adjust', stock: e.adjust.stock, delta: compileExpr(e.adjust.delta), cause: e.adjust.cause }
-  if ('setPolicy' in e) return { t: 'setPolicy', activity: e.setPolicy.activity ?? null, study: e.setPolicy.study ?? null }
+  if ('setPolicy' in e) return { t: 'setPolicy', policy: Object.fromEntries(Object.entries(e.setPolicy).filter(([, v]) => v !== undefined)) as Record<string, string> }
   if ('setFlag' in e) return { t: 'setFlag', name: e.setFlag.name, value: compileExpr(e.setFlag.value) }
   if ('startProcess' in e) return { t: 'startProcess', def: e.startProcess }
   if ('run' in e) return { t: 'run', hook: e.run }
@@ -219,6 +223,8 @@ export function prepareContent(bundle: ContentBundle): Prepared {
     descriptors: new Map(bundle.descriptors.map((d) => [d.id, d])),
     factors: new Map(bundle.factors.map((f) => [f.id, f])),
     activityIndex: new Map(bundle.body.activityLevels.map((a, i) => [a.id, i])),
+    occupations: new Map(bundle.country.labor.occupations.map((o) => [o.id, o])),
+    programByCredential: new Map(bundle.country.labor.programs.map((p) => [p.credential, p])),
     stageFor(age) {
       let id = stagesAscending[0]!.id
       for (const s of stagesAscending) if (age >= s.fromAge) id = s.id

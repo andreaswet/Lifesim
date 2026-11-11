@@ -1,55 +1,64 @@
 # Resident population, 1 July 2023. Source: US Census Bureau, Vintage 2023 state population
 # estimates (NST-EST2023-ALLDATA). Used as the weight for where a character is born; births are
 # assumed proportional to population until natality data by state is added.
-id,name,population
-ak,Alaska,733406
-al,Alabama,5108468
-ar,Arkansas,3067732
-az,Arizona,7431344
-ca,California,38965193
-co,Colorado,5877610
-ct,Connecticut,3617176
-dc,District of Columbia,678972
-de,Delaware,1031890
-fl,Florida,22610726
-ga,Georgia,11029227
-hi,Hawaii,1435138
-ia,Iowa,3207004
-id,Idaho,1964726
-il,Illinois,12549689
-in,Indiana,6862199
-ks,Kansas,2940546
-ky,Kentucky,4526154
-la,Louisiana,4573749
-ma,Massachusetts,7001399
-md,Maryland,6180253
-me,Maine,1395722
-mi,Michigan,10037261
-mn,Minnesota,5737915
-mo,Missouri,6196156
-ms,Mississippi,2939690
-mt,Montana,1132812
-nc,North Carolina,10835491
-nd,North Dakota,783926
-ne,Nebraska,1978379
-nh,New Hampshire,1402054
-nj,New Jersey,9290841
-nm,New Mexico,2114371
-nv,Nevada,3194176
-ny,New York,19571216
-oh,Ohio,11785935
-ok,Oklahoma,4053824
-or,Oregon,4233358
-pa,Pennsylvania,12961683
-ri,Rhode Island,1095962
-sc,South Carolina,5373555
-sd,South Dakota,919318
-tn,Tennessee,7126489
-tx,Texas,30503301
-ut,Utah,3417734
-va,Virginia,8715698
-vt,Vermont,647464
-wa,Washington,7812880
-wi,Wisconsin,5910955
-wv,West Virginia,1770071
-wy,Wyoming,584057
+#
+# The other columns, all written from memory of the cited tables and to be pinned (see docs/CALIBRATION.md):
+#   rpp          regional price parity, 100 = national (BEA, Regional Price Parities 2022)
+#   rent, home   median gross rent a month and median home value (Census ACS 2022-2023)
+#   incomeTax    effective state income tax on a median household income, percent (Tax Foundation; ITEP)
+#   propertyTax  effective property tax on owner-occupied homes, percent of value (Tax Foundation 2023)
+#   minWage      state minimum wage an hour, 2025 (US Department of Labor); the federal floor is 7.25
+#   uiMax        highest weekly unemployment benefit, 2024 (US Department of Labor)
+#   medicaid     1 if the state has expanded Medicaid to low-income adults (KFF, 2025)
+id,name,population,rpp,rent,home,incomeTax,propertyTax,minWage,uiMax,medicaid
+ak,Alaska,733406,102,1350,335000,0,1.04,11.91,370,1
+al,Alabama,5108468,88,915,200000,3.2,0.39,7.25,275,0
+ar,Arkansas,3067732,87,870,180000,3.0,0.59,11.00,451,1
+az,Arizona,7431344,100,1450,400000,1.9,0.56,14.70,320,1
+ca,California,38965193,112,1870,715000,2.6,0.71,16.50,450,1
+co,Colorado,5877610,102,1640,540000,3.1,0.49,14.81,781,1
+ct,Connecticut,3617176,104,1370,345000,3.4,1.92,16.35,703,1
+dc,District of Columbia,678972,111,1820,705000,4.6,0.57,17.50,444,1
+de,Delaware,1031890,98,1300,335000,3.9,0.53,15.00,450,1
+fl,Florida,22610726,102,1530,380000,0,0.79,13.00,275,0
+ga,Georgia,11029227,96,1320,300000,3.9,0.83,7.25,365,0
+hi,Hawaii,1435138,110,1870,820000,4.7,0.27,14.00,763,1
+ia,Iowa,3207004,89,900,195000,3.4,1.43,7.25,582,1
+id,Idaho,1964726,92,1120,430000,3.7,0.53,7.25,499,1
+il,Illinois,12549689,99,1180,250000,4.3,2.07,15.00,542,1
+in,Indiana,6862199,91,950,210000,3.0,0.77,7.25,390,1
+ks,Kansas,2940546,89,960,205000,3.6,1.30,7.25,560,0
+ky,Kentucky,4526154,88,880,195000,3.7,0.77,7.25,665,1
+la,Louisiana,4573749,89,960,210000,2.6,0.55,7.25,275,1
+ma,Massachusetts,7001399,108,1640,560000,4.4,1.11,15.00,1033,1
+md,Maryland,6180253,104,1600,400000,4.0,1.02,15.00,430,1
+me,Maine,1395722,97,1010,300000,3.9,1.17,14.65,538,1
+mi,Michigan,10037261,93,1040,225000,3.5,1.35,12.48,362,1
+mn,Minnesota,5737915,98,1180,315000,4.1,1.05,11.13,914,1
+mo,Missouri,6196156,91,940,220000,3.2,0.91,13.75,320,1
+ms,Mississippi,2939690,86,890,160000,2.9,0.75,7.25,235,0
+mt,Montana,1132812,93,980,380000,3.6,0.75,10.55,742,1
+nc,North Carolina,10835491,94,1100,300000,3.6,0.73,7.25,350,1
+nd,North Dakota,783926,89,880,240000,0.8,0.98,7.25,673,1
+ne,Nebraska,1978379,90,990,230000,3.6,1.54,13.50,514,1
+nh,New Hampshire,1402054,105,1380,400000,0,1.77,7.25,427,1
+nj,New Jersey,9290841,109,1580,430000,3.0,2.23,15.49,854,1
+nm,New Mexico,2114371,90,970,235000,2.6,0.67,12.00,542,1
+nv,Nevada,3194176,97,1430,430000,0,0.50,12.00,562,1
+ny,New York,19571216,108,1510,400000,4.5,1.60,15.50,504,1
+oh,Ohio,11785935,92,940,205000,2.4,1.43,10.70,561,1
+ok,Oklahoma,4053824,88,920,190000,3.2,0.82,7.25,539,1
+or,Oregon,4233358,104,1370,480000,6.3,0.83,14.70,813,1
+pa,Pennsylvania,12961683,96,1110,245000,3.1,1.35,7.25,605,1
+ri,Rhode Island,1095962,101,1200,370000,3.2,1.32,15.00,705,1
+sc,South Carolina,5373555,93,1090,255000,3.2,0.51,7.25,326,0
+sd,South Dakota,919318,88,880,250000,0,1.09,11.50,514,1
+tn,Tennessee,7126489,91,1050,285000,0,0.58,7.25,275,0
+tx,Texas,30503301,97,1250,270000,0,1.58,7.25,577,0
+ut,Utah,3417734,95,1300,480000,4.3,0.53,7.25,746,1
+va,Virginia,8715698,101,1440,365000,4.4,0.76,12.41,378,1
+vt,Vermont,647464,97,1150,310000,3.2,1.71,14.01,668,1
+wa,Washington,7812880,109,1630,570000,0,0.84,16.66,1019,1
+wi,Wisconsin,5910955,93,990,250000,3.9,1.51,7.25,370,0
+wv,West Virginia,1770071,87,830,150000,3.6,0.55,8.75,630,1
+wy,Wyoming,584057,91,930,290000,0,0.55,7.25,560,0

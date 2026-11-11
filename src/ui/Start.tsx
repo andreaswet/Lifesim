@@ -14,13 +14,14 @@ export function Start({ actions, busy, setup }: { actions: Actions; busy: boolea
   const [sex, setSex] = useState<'' | 'male' | 'female'>('')
   const [seed, setSeed] = useState('')
   const [place, setPlace] = useState('')
+  const [group, setGroup] = useState('')
   const file = useRef<HTMLInputElement>(null)
 
   const begin = (event: Event): void => {
     event.preventDefault()
     void actions.send({
       type: 'new',
-      options: { seed: seed.trim() || randomSeed(), ...(firstName.trim() ? { firstName: firstName.trim() } : {}), ...(sex ? { sex } : {}), ...(place ? { state: place } : {}) },
+      options: { seed: seed.trim() || randomSeed(), ...(firstName.trim() ? { firstName: firstName.trim() } : {}), ...(sex ? { sex } : {}), ...(place ? { state: place } : {}), ...(group ? { ethnicity: group } : {}) },
     })
   }
 
@@ -36,8 +37,8 @@ export function Start({ actions, busy, setup }: { actions: Actions; busy: boolea
       <h1>Lifesim</h1>
       <p class="lede">One life in the United States, from a birth in 2026 to whenever it ends. You read it a year at a time and make the choices a person gets to make.</p>
       <p class="note">
-        This is the second of seven milestones. You are born into a family drawn from the real spread of American births, grow up in it, and go through school and, if it comes to that, college. Work, money of your own, friends and partners do not exist yet, so adult
-        life is still quiet. The family you get, like the body, is not chosen: that is the game.
+        This is the third of seven milestones. You are born into a family drawn from the real spread of American births, grow up in it, go through school, and then earn a living: jobs and careers, rent or a mortgage, taxes, debt, savings, the ups and downs of the
+        economy, and in the end retirement. Friends and partners do not exist yet. The family you get, like the body, is not chosen: that is the game.
       </p>
 
       <form onSubmit={begin}>
@@ -72,6 +73,19 @@ export function Start({ actions, busy, setup }: { actions: Actions; busy: boolea
               </option>
             ))}
           </select>
+        </label>
+
+        <label>
+          <span>Background</span>
+          <select value={group} onChange={(e) => setGroup(e.currentTarget.value)}>
+            <option value="">Leave it to chance, as births fall</option>
+            {setup.groups.map((g) => (
+              <option key={g.id} value={g.id}>
+                {g.label}
+              </option>
+            ))}
+          </select>
+          <small>Race and ethnicity shape the family you are born into, and a few documented things later on. "Why?" says so where it matters.</small>
         </label>
 
         <label>

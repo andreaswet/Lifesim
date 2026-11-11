@@ -3,7 +3,7 @@
  * so tests can call it; `batch.ts` is the command-line wrapper.
  */
 
-import { checkInvariants, createLife, type EngineEnv, type GameState, type Prepared } from '../engine'
+import { checkInvariants, createLife, currentIncome, netWorth, povertyLine, type EngineEnv, type GameState, type Prepared } from '../engine'
 import { monthlyFromAnnual } from '../engine/content/prepare'
 import { inverseNormalCdf } from '../engine/core/dmath'
 import { EDU_LEVELS } from '../engine/content/country-schema'
@@ -46,6 +46,33 @@ export interface SchoolingResult {
   transferred: boolean
 }
 
+/** One birthday of a life, as a survey would record it (design §13.2). Money is in start-year dollars. */
+export interface YearRecord {
+  age: number
+  education: string
+  /** emp, unemp (looking), nilf (not looking), retired, school (at school or full-time college, not working). */
+  status: 'emp' | 'unemp' | 'nilf' | 'retired' | 'school'
+  fullTime: boolean
+  /** Yearly pay of the job held, if any. */
+  pay: number
+  occupation: string | null
+  /** Months in the current job. */
+  tenure: number
+  /** The person's household: its income, size, and whether this person is in the unit that pays for it. */
+  hhIncome: number
+  /** What the person and a partner they live with bring in. */
+  income: number
+  hhSize: number
+  head: boolean
+  /** Net worth of the person's unit (themselves and a partner they live with). */
+  worth: number
+  housing: 'own' | 'rent' | 'parents' | 'guest' | 'other'
+  rent: number
+  cover: string
+  credit: number | null
+  poor: boolean
+}
+
 export interface LifeResult {
   seed: string
   strategy: Strategy
@@ -64,6 +91,15 @@ export interface LifeResult {
   feedLines: number
   invariantProblems: string[]
   schooling: SchoolingResult
+  ethnicity: string
+  years: YearRecord[]
+  /** Jobs started between 18 and 56. */
+  jobsBy56: number | null
+  /** Jobs lost to an employer's trouble, and how many of those the character saw signs of first (design §9.5). */
+  layoffs: number
+  warnedLayoffs: number
+  retiredAt: number | null
+  recessions: number
 }
 
 export function runLife(seed: string, strategy: Strategy, env: EngineEnv): LifeResult {
@@ -105,6 +141,51 @@ export function runLife(seed: string, strategy: Strategy, env: EngineEnv): LifeR
     transferred: false,
   }
   let firstCollegeStart: number | null = null
+  const survey: YearRecord[] = []
+  let retiredAt: number | null = null
+  let jobsBy56: number | null = null
+  const record = (): void => {
+    const p = self()
+    if (p.died) return
+    const age = Math.floor((state.now - p.born) / 12)
+    const px = state.world.priceLevel
+    const home = p.householdId ? state.households[p.householdId] : undefined
+    const work = p.work
+    const job = work?.job
+    const edu = p.education
+    const inSchool = edu.status === 'k12' || (edu.status === 'college' && !edu.college?.partTime)
+    const status: YearRecord['status'] = job ? 'emp' : work?.status === 'retired' ? 'retired' : inSchool ? 'school' : work?.status === 'unemployed' ? 'unemp' : 'nilf'
+    const partner = p.partner ? state.people[p.partner.id] : undefined
+    const together = partner && !partner.died && partner.householdId === p.householdId
+    const unit = [p.id, ...(together ? [partner.id] : [])]
+    const payer = home?.housing.payer ?? null
+    const head = payer !== null && unit.includes(payer)
+    const parentsHome = !head && [p.motherId, p.fatherId].some((id) => id !== null && id === payer)
+    const hhIncome = (home?.income ?? 0) / px
+    const size = home?.members.length ?? 1
+    if (status === 'retired' && retiredAt === null) retiredAt = age
+    if (age === 56 && jobsBy56 === null && work) jobsBy56 = work.history.filter((h) => (h.from - p.born) / 12 >= 18).length + (job && (job.started - p.born) / 12 >= 18 ? 1 : 0)
+    survey.push({
+      age,
+      education: edu.level,
+      status,
+      fullTime: !!job && job.hoursPerWeek >= 35,
+      pay: job ? job.salary / px : 0,
+      occupation: job?.occupation ?? null,
+      tenure: job ? state.now - job.started : 0,
+      hhIncome,
+      income: unit.reduce((a, id) => a + currentIncome({ state, content }, state.people[id]!), 0) / px,
+      hhSize: size,
+      head,
+      worth: unit.reduce((a, id) => a + netWorth(state, id), 0) / px,
+      housing: head ? (home?.housing.tenure === 'own' ? 'own' : home?.housing.tenure === 'rent' ? 'rent' : 'guest') : parentsHome ? 'parents' : 'other',
+      // A shared rental is one household; its rent is the whole, as the Census counts it.
+      rent: head && home?.housing.tenure === 'rent' ? home.housing.rent / px / (home.housing.shared ? content.bundle.country.money.housing.sharedRent : 1) : 0,
+      cover: p.money?.cover ?? '',
+      credit: null,
+      poor: hhIncome < povertyLine({ state, content }, size),
+    })
+  }
   const observe = (): void => {
     const p = self()
     const age = Math.floor((state.now - p.born) / 12)
@@ -150,19 +231,28 @@ export function runLife(seed: string, strategy: Strategy, env: EngineEnv): LifeR
   let activityAt60: string | null = null
   let years = 0
 
+  // A year can take several calls: the advance stops whenever a decision opens. Each age is
+  // counted and surveyed once, on the birthday itself, so moments of decision are not oversampled.
+  let lastAge = -1
+  let calls = 0
   while (state.phase === 'alive') {
     const age = Math.floor((state.now - self().born) / 12)
-    const stage = content.stageFor(age)
-    yearsInStage[stage] = (yearsInStage[stage] ?? 0) + 1
-    if (age === 60 && cardioAt60 === null) {
-      cardioAt60 = self().body.cardio
-      activityAt60 = self().policies.activity
+    if (age !== lastAge && (state.now - self().born) % 12 === 0) {
+      lastAge = age
+      const stage = content.stageFor(age)
+      yearsInStage[stage] = (yearsInStage[stage] ?? 0) + 1
+      if (age === 60 && cardioAt60 === null) {
+        cardioAt60 = self().body.cardio
+        activityAt60 = self().policies.activity
+      }
+      record()
+      years++
+      if (years % 10 === 0) problems.push(...checkInvariants(state, content))
     }
     state = playYear(state, strategy, { ...env, mutate: true })
     observe()
-    years++
-    if (years % 10 === 0 || state.phase === 'ended') problems.push(...checkInvariants(state, content))
-    if (years > 200) {
+    if (state.phase === 'ended') problems.push(...checkInvariants(state, content))
+    if (++calls > 2000) {
       problems.push('life did not end')
       break
     }
@@ -170,6 +260,14 @@ export function runLife(seed: string, strategy: Strategy, env: EngineEnv): LifeR
 
   const person = self()
   const died = person.died?.at ?? state.now
+  let layoffs = 0
+  let warnedLayoffs = 0
+  for (const entry of state.log) {
+    if (entry.fact.kind !== 'job_lost' || (entry.fact.data.which !== 'layoffs' && entry.fact.data.which !== 'closed')) continue
+    layoffs++
+    const employer = entry.fact.data.employer
+    if (state.log.some((e) => e.fact.kind === 'work_signal' && !e.hidden && e.fact.data.employer === employer && e.month <= entry.month && e.month >= entry.month - 18)) warnedLayoffs++
+  }
   const decisionsOpened: Record<string, number> = {}
   const significantBySource: Record<string, number> = {}
   let fluCount = 0
@@ -206,6 +304,13 @@ export function runLife(seed: string, strategy: Strategy, env: EngineEnv): LifeR
     variantCounts: { ...state.narration.counts },
     feedLines,
     invariantProblems: problems,
+    ethnicity: person.ethnicity,
+    years: survey,
+    jobsBy56,
+    layoffs,
+    warnedLayoffs,
+    retiredAt,
+    recessions: state.world.recessions,
     schooling: { ...schooling, siblingsEver: Object.values(state.people).filter((p) => p.id !== person.id && p.motherId !== null && p.motherId === person.motherId).length },
   }
 }
@@ -265,6 +370,41 @@ export interface BatchSummary {
   invariantProblems: string[]
   msPerSimulatedYear: number
   schooling: SchoolingSummary
+  work: WorkSummary
+}
+
+export interface WorkSummary {
+  /** Unemployed as a share of the labor force, ages 16 and over; and among those 25 and over, by schooling. */
+  unemployment: number
+  unemploymentByEducation: Record<string, number>
+  /** Employed share of people 25–54. */
+  primeAgeEmployment: number
+  /** Median weekly pay of full-time workers 25 and over, start-year dollars; by schooling; women's as a share of men's. */
+  medianWeekly: number
+  medianWeeklyByEducation: Record<string, number>
+  womenToMen: number
+  bachelorPremium: number
+  medianHouseholdIncome: number
+  poverty: number
+  medianWorth: number
+  medianWorthByAge: Record<string, number>
+  owning: number
+  owningUnder35: number
+  withParents18to24: number
+  withParents25to34: number
+  medianRent: number
+  uninsured: number
+  medianTenureYears: number
+  jobsBy56: number
+  medianRetirementAge: number
+  /** Rank-rank slope of child household income at 30–34 on parents' at birth (Chetty et al. 2014). */
+  rankSlope: number
+  bottomToTop: number
+  yearsPerRecession: number
+  /** Median household worth at 45–54, by group (design decision Q1). */
+  worthByGroup: Record<string, number>
+  /** Share of jobs lost to an employer's trouble that were preceded by a sign the character noticed. */
+  layoffsWarned: number
 }
 
 export interface SchoolingSummary {
@@ -404,6 +544,83 @@ function summarizeSchooling(results: LifeResult[]): SchoolingSummary {
   }
 }
 
+function median(xs: number[]): number {
+  if (xs.length === 0) return NaN
+  const sorted = [...xs].sort((a, b) => a - b)
+  const mid = sorted.length >> 1
+  return sorted.length % 2 ? sorted[mid]! : (sorted[mid - 1]! + sorted[mid]!) / 2
+}
+
+/** Rank of each value among all, from 0 to 1. */
+function ranks(xs: number[]): number[] {
+  const order = xs.map((x, i) => [x, i] as const).sort((a, b) => a[0] - b[0])
+  const out = new Array<number>(xs.length)
+  order.forEach(([, i], r) => (out[i] = (r + 0.5) / xs.length))
+  return out
+}
+
+export function summarizeWork(results: LifeResult[]): WorkSummary {
+  // Every year of every life, pooled: one cohort lived through, which is a stationary population.
+  const ys = results.flatMap((r) => r.years.map((y) => ({ ...y, sex: r.sex, group: r.ethnicity })))
+  const share = (xs: typeof ys, test: (y: (typeof ys)[number]) => boolean): number => (xs.length ? xs.filter(test).length / xs.length : NaN)
+  const force = ys.filter((y) => y.age >= 16 && (y.status === 'emp' || y.status === 'unemp'))
+  const levels = ['less_than_hs', 'high_school', 'some_college', 'associate', 'bachelor', 'graduate']
+  const ft = ys.filter((y) => y.age >= 25 && y.fullTime)
+  const weekly = (xs: typeof ys): number => median(xs.map((y) => y.pay / 52))
+  const heads = ys.filter((y) => y.head && y.age >= 18)
+  const byAge = (lo: number, hi: number): typeof ys => heads.filter((y) => y.age >= lo && y.age <= hi)
+  // Mobility, as Chetty et al. measure it: parents' household income averaged over the childhood
+  // years, against the child's own income (with a partner's) at 30–34, each ranked in its generation.
+  const pairs = results
+    .map((r) => {
+      const early = r.years.filter((y) => y.age >= 5 && y.age <= 17)
+      const later = r.years.filter((y) => y.age >= 30 && y.age <= 34)
+      return later.length && early.length ? [early.reduce((a, y) => a + y.hhIncome, 0) / early.length, later.reduce((a, y) => a + y.income, 0) / later.length] : null
+    })
+    .filter((x): x is number[] => x !== null)
+  const pr = ranks(pairs.map((p) => p[0]!))
+  const cr = ranks(pairs.map((p) => p[1]!))
+  const mp = mean(pr)
+  const mc = mean(cr)
+  let sxy = 0
+  let sxx = 0
+  for (let i = 0; i < pr.length; i++) {
+    sxy += (pr[i]! - mp) * (cr[i]! - mc)
+    sxx += (pr[i]! - mp) ** 2
+  }
+  const bottom = pr.map((p, i) => [p, cr[i]!]).filter(([p]) => p! < 0.2)
+  const years = results.reduce((a, r) => a + r.simulatedYears, 0)
+  const groups: Record<string, number> = {}
+  for (const g of [...new Set(results.map((r) => r.ethnicity))]) groups[g] = median(byAge(45, 54).filter((y) => y.group === g).map((y) => y.worth))
+  return {
+    unemployment: share(force, (y) => y.status === 'unemp'),
+    unemploymentByEducation: Object.fromEntries(levels.map((l) => [l, share(force.filter((y) => y.age >= 25 && y.education === l), (y) => y.status === 'unemp')])),
+    primeAgeEmployment: share(ys.filter((y) => y.age >= 25 && y.age <= 54), (y) => y.status === 'emp'),
+    medianWeekly: weekly(ft),
+    medianWeeklyByEducation: Object.fromEntries(levels.map((l) => [l, weekly(ft.filter((y) => y.education === l))])),
+    womenToMen: weekly(ft.filter((y) => y.sex === 'female')) / weekly(ft.filter((y) => y.sex === 'male')),
+    bachelorPremium: weekly(ft.filter((y) => y.education === 'bachelor')) / weekly(ft.filter((y) => y.education === 'high_school')) - 1,
+    medianHouseholdIncome: median(heads.map((y) => y.hhIncome)),
+    poverty: share(ys, (y) => y.poor),
+    medianWorth: median(heads.map((y) => y.worth)),
+    medianWorthByAge: { under35: median(byAge(18, 34).map((y) => y.worth)), '35-44': median(byAge(35, 44).map((y) => y.worth)), '45-54': median(byAge(45, 54).map((y) => y.worth)), '55-64': median(byAge(55, 64).map((y) => y.worth)), '65-74': median(byAge(65, 74).map((y) => y.worth)), '75+': median(byAge(75, 200).map((y) => y.worth)) },
+    owning: share(heads, (y) => y.housing === 'own'),
+    owningUnder35: share(byAge(18, 34), (y) => y.housing === 'own'),
+    withParents18to24: share(ys.filter((y) => y.age >= 18 && y.age <= 24), (y) => y.housing === 'parents'),
+    withParents25to34: share(ys.filter((y) => y.age >= 25 && y.age <= 34), (y) => y.housing === 'parents'),
+    medianRent: median(heads.filter((y) => y.housing === 'rent').map((y) => y.rent)),
+    uninsured: share(ys.filter((y) => y.age >= 18 && y.age < 65), (y) => y.cover === 'none'),
+    medianTenureYears: median(ys.filter((y) => y.status === 'emp' && y.age >= 16).map((y) => y.tenure / 12)),
+    jobsBy56: mean(results.filter((r) => r.jobsBy56 !== null).map((r) => r.jobsBy56!)),
+    medianRetirementAge: median(results.filter((r) => r.retiredAt !== null).map((r) => r.retiredAt!)),
+    rankSlope: sxy / sxx,
+    bottomToTop: bottom.length ? bottom.filter(([, c]) => c! >= 0.8).length / bottom.length : NaN,
+    yearsPerRecession: years / Math.max(1, results.reduce((a, r) => a + r.recessions, 0)),
+    worthByGroup: groups,
+    layoffsWarned: results.reduce((a, r) => a + r.warnedLayoffs, 0) / Math.max(1, results.reduce((a, r) => a + r.layoffs, 0)),
+  }
+}
+
 export function summarize(results: LifeResult[], content: Prepared, elapsedMs: number): BatchSummary {
   const bySex = {} as BatchSummary['bySex']
   for (const sex of ['male', 'female'] as const) {
@@ -471,6 +688,7 @@ export function summarize(results: LifeResult[], content: Prepared, elapsedMs: n
     invariantProblems: [...new Set(results.flatMap((r) => r.invariantProblems))],
     msPerSimulatedYear: elapsedMs / totalYears,
     schooling: summarizeSchooling(results),
+    work: summarizeWork(results),
   }
 }
 

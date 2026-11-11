@@ -347,9 +347,10 @@ describe('perception', () => {
     let s = liveUntil(newLife('perc-1', env, IMMORTAL), env, (x) => ageOf(x) >= 30)
     s = step(s, { type: 'setPolicy', policy: { activity: 'sedentary' } }, env).state
     s = liveUntil(s, env, (x) => ageOf(x) >= 70)
-    const changes = facts(s, 'band_changed')
+    // Work now adds strain too, which has its own words; what the body does is told as stamina.
+    const changes = facts(s, 'band_changed').filter((e) => e.fact.data.descriptor === 'stamina')
     expect(changes.length).toBeGreaterThanOrEqual(2)
-    expect(changes.every((e) => e.fact.data.descriptor === 'stamina' && e.fact.data.direction === 'down')).toBe(true)
+    expect(changes.every((e) => e.fact.data.direction === 'down')).toBe(true)
 
     const view = perceive(s, content)
     expect(view.status.health).toMatch(/^[a-z ]+$/)
