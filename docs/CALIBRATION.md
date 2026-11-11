@@ -18,7 +18,8 @@ npm run batch -- --lives 5000 --seed cal-m3 --strategy persona --no-text
 The result depends only on the seed, the strategy, the number of lives and the content; life *i*
 always has seed `cal-m3-i`. Lives in a batch are never protected in early childhood (see
 Deviations). Unless a row says otherwise, the numbers below are from that command at content hash
-`@@HASH@@`. It takes about five minutes on four cores.
+`98a0c4f553f6ae04` (text has been added since; text never changes a life). It takes about five
+minutes on four cores.
 
 The players are **persona** players: each acts as its own drawn temperament would, and takes the
 choices that are the player's alone (leaving school, enrolling later, moving out, buying a home,
@@ -99,7 +100,7 @@ choices). Returns are real, after inflation, as yearly log changes.
 | Metric | Target | Source | Simulated | Verdict |
 |--------|--------|--------|-----------|---------|
 | Births to married / cohabiting / lone mothers | 60% / 24% / 16% | NCHS births 2022; NSFG (memory) | 61% / 23% / 16% | within |
-| Children under 18 living with both parents | about 65% | Census CPS 2023 (memory) | 61.8% | close |
+| Children under 18 living with both parents | about 65% | Census CPS 2023 (memory) | 61.9% | close |
 | Brothers and sisters, counted from the child | about 1.8 | Derived from completed family sizes (memory) | 1.78 | within |
 
 The simulation has no step-parents, so "both parents" means the child's own two. The Census figure
@@ -111,21 +112,21 @@ which raise the risk, come from the labor market.
 
 | Metric | Target | Source | Simulated | Verdict |
 |--------|--------|--------|-----------|---------|
-| Mean high-school GPA | 3.0–3.1 | NAEP High School Transcript Study 2019 (memory) | 3.02 | within |
+| Mean high-school GPA | 3.0–3.1 | NAEP High School Transcript Study 2019 (memory) | 3.03 | within |
 | Graduate high school with their class | 86–87% | NCES Digest 2023, Table 219.46 (file) | 85.0% | close |
 | Completed high school, ages 25–29 | 94.3% | NCES Digest 2023, Table 104.20 (file) | 94.5% at 27 | within |
-| SAT total among takers, mean (sd) | 1028 (about 215) | College Board 2023 (memory) | 1014 (206) | within |
-| Enrolled in college the autumn after graduating | 62.0% | NCES Digest 2023, Table 302.10 (file) | 63.3% | within |
+| SAT total among takers, mean (sd) | 1028 (about 215) | College Board 2023 (memory) | 1016 (206) | within |
+| Enrolled in college the autumn after graduating | 62.0% | NCES Digest 2023, Table 302.10 (file) | 63.4% | within |
 | … at a two-year college | 16.9% | same | 18.5% | close |
-| … at a four-year college | 45.1% | same | 44.8% | within |
-| Ever enrolled by the mid-twenties | about 84% | NCES ELS:2002 (memory) | 82.8% by 27 | close |
-| Associate degree or higher, ages 25–29 | 49.7% | NCES Digest 2023, Table 104.20 (file) | 48.0% at 27 | close |
+| … at a four-year college | 45.1% | same | 44.9% | within |
+| Ever enrolled by the mid-twenties | about 84% | NCES ELS:2002 (memory) | 83.0% by 27 | close |
+| Associate degree or higher, ages 25–29 | 49.7% | NCES Digest 2023, Table 104.20 (file) | 48.4% at 27 | close |
 | Bachelor's or higher, ages 25–29 | 40.5% | same | 38.0% at 27 | 6% low |
 | … men / women | 35.9% / 45.2% | same | 36.0% / 40.1% | gap too small |
-| Four-year entrants holding a degree six years on | about 70% | National Student Clearinghouse (memory) | 66.4% | close |
-| Two-year entrants: associate / transferred / bachelor's | about 30% / 33% / 16% | NCES 326.20; NSC (memory) | 40% / 32% / 21% | associates high |
-| Bachelor's graduates who borrowed | about half | College Board, Trends in Student Aid (memory) | 65% | high, see below |
-| Their average debt | about $29,000 | same | $21,600 | low, see below |
+| Four-year entrants holding a degree six years on | about 70% | National Student Clearinghouse (memory) | 66.8% | close |
+| Two-year entrants: associate / transferred / bachelor's | about 30% / 33% / 16% | NCES 326.20; NSC (memory) | 40% / 31% / 20% | associates high |
+| Bachelor's graduates who borrowed | about half | College Board, Trends in Student Aid (memory) | 63% | high, see below |
+| Their average debt | about $29,000 | same | $21,700 | low, see below |
 
 A student's job now counts against their studies once it passes fifteen hours a week (Darolia
 2014), which costs a few points of completion compared with Milestone 2. Net prices by family
@@ -138,17 +139,17 @@ People, not households. Pay is the median of full-time workers 25 and over, in 2
 
 | Metric | Target | Source | Simulated | Verdict |
 |--------|--------|--------|-----------|---------|
-| Unemployment rate, 16 and over | 5.5–6% long-run | BLS 1948–2024 (memory) | 7.2% | high |
-| … 25+, by schooling: none / HS / some college / associate / BA / graduate | 8.9 / 6.0 / 5.0 / 4.1 / 3.3 / 2.6 | BLS 2024 (6.2 / 4.2 / 3.5 / 2.9 / 2.3 / 1.8), scaled to the long-run mean | 9.7 / 7.3 / 5.8 / 5.2 / 4.5 / 2.9 | gradient right; 15–35% high |
-| Employed, ages 25–54 | about 80% | BLS CPS 2024 (memory) | 82.2% | within |
-| Median weekly pay, full-time, 25+ | about $1,200 | BLS CPS 2025 (memory) | $1,260 | within |
-| … no diploma / HS / BA / graduate | $740 / $930 / $1,540 / about $1,900 | BLS, Education Pays 2024 (memory) | $653 / $843 / $1,605 / $2,024 | ends of the range low |
-| Bachelor's pay over high school | about 65% | same | 90% | too wide |
+| Unemployment rate, 16 and over | 5.5–6% long-run | BLS 1948–2024 (memory) | 6.9% | high |
+| … 25+, by schooling: none / HS / some college / associate / BA / graduate | 8.9 / 6.0 / 5.0 / 4.1 / 3.3 / 2.6 | BLS 2024 (6.2 / 4.2 / 3.5 / 2.9 / 2.3 / 1.8), scaled to the long-run mean | 9.0 / 7.0 / 5.4 / 4.7 / 4.3 / 2.9 | gradient right; up to 30% high |
+| Employed, ages 25–54 | about 80% | BLS CPS 2024 (memory) | 82.5% | within |
+| Median weekly pay, full-time, 25+ | about $1,200 | BLS CPS 2025 (memory) | $1,264 | within |
+| … no diploma / HS / BA / graduate | $740 / $930 / $1,540 / about $1,900 | BLS, Education Pays 2024 (memory) | $662 / $822 / $1,602 / $2,050 | lower end low |
+| Bachelor's pay over high school | about 65% | same | 95% | too wide |
 | Women's median pay as a share of men's | 83% | BLS, Highlights of Women's Earnings 2023 (memory) | 90% | gap too small, see below |
-| Median job tenure | 3.9 years | BLS, Employee Tenure 2024 (memory) | 3.3 | close |
-| Jobs held from 18 to 56 | 12–13 | BLS NLSY79 (memory) | 9.7 | low |
+| Median job tenure | 3.9 years | BLS, Employee Tenure 2024 (memory) | 3.4 | close |
+| Jobs held from 18 to 56 | 12–13 | BLS NLSY79 (memory) | 9.4 | low |
 | Median age at retirement | about 62–64 | Gallup; Center for Retirement Research (memory) | 64 | within |
-| Uninsured, ages 18–64 | about 11% (19–64) | Census, Health Insurance Coverage 2024 (memory) | 12.7% | close |
+| Uninsured, ages 18–64 | about 11% (19–64) | Census, Health Insurance Coverage 2024 (memory) | 12.6% | close |
 | Layoffs preceded by a sign the character noticed | 80% or more | design §9.5 | 83.8% | within |
 
 The BLS unemployment rates by schooling were measured in 2024, when the overall rate was 4.0%.
@@ -162,18 +163,18 @@ Households headed by the simulated person, pooled over every year of their adult
 | Metric | Target | Source | Simulated | Verdict |
 |--------|--------|--------|-----------|---------|
 | Median household income | about $84,000 | Census CPS ASEC 2024 (memory) | $37,900 | low: one adult |
-| People below the poverty line | about 11% | Census, official measure (memory) | 16.6% | high: one adult |
-| Median household net worth | $193,000 | Federal Reserve SCF 2022 (memory) | $153,000 | close |
-| … by age of head: under 35 / 35–44 / 45–54 / 55–64 / 65–74 / 75+ | $39k / 135k / 247k / 365k / 410k / 335k | same | $14k / 110k / 254k / 427k / 467k / 309k | within from 35 on; young low |
+| People below the poverty line | about 11% | Census, official measure (memory) | 16.3% | high: one adult |
+| Median household net worth | $193,000 | Federal Reserve SCF 2022 (memory) | $154,000 | close |
+| … by age of head: under 35 / 35–44 / 45–54 / 55–64 / 65–74 / 75+ | $39k / 135k / 247k / 365k / 410k / 335k | same | $14k / 111k / 255k / 427k / 460k / 304k | within from 35 on; young low |
 | Homeownership: all households / head under 35 | 65% / 38% | Census Housing Vacancy Survey 2024 (memory) | 40% / 16% | low: one adult |
 | Young adults living with parents: 18–24 / 25–34 | 56% / 16% | Census CPS 2023 (memory) | 66% / 19% | high |
-| Median rent paid | $1,400–1,500 | Census ACS 2023 (memory) | $1,061 | low: one adult |
+| Median rent paid | $1,400–1,500 | Census ACS 2023 (memory) | $1,046 | low: one adult |
 
 ## Groups (design decision Q1)
 
 | Check | Expected | Simulated | Verdict |
 |-------|----------|-----------|---------|
-| Median net worth at 45–54, by group | white far above Black and Hispanic; SCF 2022 medians for all ages: white $285k, Black $45k, Hispanic $62k (memory) | white $295k, Black $198k, Hispanic $185k, Asian $313k | direction right, gaps far too small |
+| Median net worth at 45–54, by group | white far above Black and Hispanic; SCF 2022 medians for all ages: white $285k, Black $45k, Hispanic $62k (memory) | white $299k, Black $196k, Hispanic $187k, Asian $303k | direction right, gaps far too small |
 | Hiring callbacks for equally qualified applicants | white 36% above Black, 24% above Latino (Quillian et al. 2017) | applied as named factors; shown in "Why?" | as designed |
 | Mortgage denials at the same finances | somewhat higher for Black, Hispanic and Asian applicants (Bhutta et al. 2022) | applied as a named factor | as designed |
 
@@ -181,13 +182,13 @@ Households headed by the simulated person, pooled over every year of their adult
 
 | Check | Expected | Simulated | Verdict |
 |-------|----------|-----------|---------|
-| Bachelor's degree by family income quarter, poorest first | about 15 / 28 / 45 / 62% (Pell Institute, memory) | 23 / 29 / 41 / 60% | gradient right; poorest quarter high |
-| Enrolled right away, by income quarter | rising steeply | 46 / 52 / 67 / 85% | as expected |
+| Bachelor's degree by family income quarter, poorest first | about 15 / 28 / 45 / 62% (Pell Institute, memory) | 24 / 28 / 40 / 60% | gradient right; poorest quarter high |
+| Enrolled right away, by income quarter | rising steeply | 47 / 52 / 67 / 85% | as expected |
 | Achievement gap, 90th vs 10th percentile of family income | 1.0–1.25 SD (Reardon 2011) | 1.21 SD | within |
 | Parent–child schooling correlation | 0.46 (Hertz et al. 2007) | 0.44 | within |
-| Education and earnings | bachelor's premium about 65% (BLS) | 90% | right direction, too large |
-| Parent–child income rank slope | 0.34 (Chetty et al. 2014) | 0.24 | too mobile, see below |
-| Born in the bottom fifth, reaching the top fifth | 7.5% (same) | 11.3% | too mobile |
+| Education and earnings | bachelor's premium about 65% (BLS) | 95% | right direction, too large |
+| Parent–child income rank slope | 0.34 (Chetty et al. 2014) | 0.23 | too mobile, see below |
+| Born in the bottom fifth, reaching the top fifth | 7.5% (same) | 12.7% | too mobile |
 | Poorer children do worse on average, with wide variation | yes | one in four from the poorest quarter earns a bachelor's; four in ten from the richest do not | as intended |
 | Effort pays slowly | yes | unchanged since Milestone 2 | as intended |
 | More activity, more fitness at 60 | ordered | 0.37 / 0.47 / 0.56 / 0.67 | as expected |
@@ -205,12 +206,12 @@ partner's, when there is one) at 30–34, each ranked within its generation.
 |-----------|-----|------|
 | Household income, poverty, homeownership and rent fall well short. | Every household the simulated person heads has one adult and one income; half of real households have two. | Partnerships arrive in Milestone 4. Re-measure then. |
 | The gender pay gap is 10% rather than 17%. | Sorting into occupations, hours and spells out of work are modeled, as design decision Q2 requires; the largest mechanism, the fall in mothers' earnings after a first child (Kleven et al. 2019), needs children. | Milestone 4. No residual modifier unless the gap is still far off then. |
-| Income mobility is too high (rank slope 0.24 against 0.34). | Family background reaches adult income through schooling, genes and a direct effect on pay. Missing: a partner's income, which raises the persistence of family income (Chadwick & Solon 2002), and networks and neighborhoods. | Re-measure after Milestone 4; referrals from the network arrive with it. |
+| Income mobility is too high (rank slope 0.23 against 0.34). | Family background reaches adult income through schooling, genes and a direct effect on pay. Missing: a partner's income, which raises the persistence of family income (Chadwick & Solon 2002), and networks and neighborhoods. | Re-measure after Milestone 4; referrals from the network arrive with it. |
 | Wealth gaps between groups are far smaller than in life. | Starting wealth and homeownership differ by group, and two direct effects are modeled, but most of the real gap is built over generations through inheritance and homeownership, and a single generation of the simulation inherits little of it. | Revisit when continuing as a descendant exists (Milestone 7), and with the inheritance pass. |
-| Unemployment is 15–35% above target at every level of schooling, and the bachelor's premium is too wide. | Spells out of work for people coming back from time at home count as unemployment, as the BLS counts them; lower-schooled workers spend more months out and on junior rungs. | Revisit with the full routine in Milestone 5, which changes who steps out and why. |
+| Unemployment is up to 30% above target, and the bachelor's premium is too wide (95% against 65%). | Spells out of work for people coming back from time at home count as unemployment, as the BLS counts them; lower-schooled workers spend more months out and on junior rungs. | Revisit with the full routine in Milestone 5, which changes who steps out and why. |
 | Too many college graduates borrow, and they borrow too little each. | Parents' incomes now come from the labor market and are a little lower at birth than the Milestone 2 stand-in, so more students qualify for and take federal loans; few take private loans. | Revisit with family money in Milestone 4. |
 | Young adults stay at home somewhat too long, and the young have too little wealth. | Leaving home needs a job and a landlord's yes; a young person on their own buys a home late. | Milestone 4 (moving in with a partner is the commonest way out). |
-| Jobs held by 56 are low (9.7 against 12–13). | The survey counts very short and simultaneous jobs; the simulation holds one job at a time. | Accept for now. |
+| Jobs held by 56 are low (9.4 against 12–13). | The survey counts very short and simultaneous jobs; the simulation holds one job at a time. | Accept for now. |
 | The gender gap in degrees is about 4 points; the real gap is 9. | One mechanism is modeled: girls' greater engagement with schoolwork. No further modifier was added, by design decision Q2. | Revisit with personality development in Milestone 5. |
 | Too many community-college entrants finish an associate degree. | Part-time study is only roughly modeled. | Revisit with the full routine in Milestone 5. |
 
@@ -236,11 +237,11 @@ From a 3,000-life batch with text (`--seed m3text --strategy mixed`), except the
 | Check | Target (design §9, §13.4) | Milestone 1 | Milestone 2 | Milestone 3 | Comment |
 |-------|---------------------------|-------------|-------------|-------------|---------|
 | Invariants broken | none | none | none | none | Now includes: all accounts sum to zero to the cent; no debt above zero or asset below it; nobody owns a home they do not live in; the dead hold no money, job or home; nobody works without the license their job needs. |
-| Significant feed items by source | player ≥ 50%, NPC ≈ 25%, structural ≈ 15%, chance ≤ 10% | 36 / 0 / 56 / 8 | 37 / 22 / 38 / 4 | @@SOURCES@@ | Work and money are mostly the player's own doing. The NPC share falls because nobody but the family exists yet. |
-| Decisions opened per year | within the pacing budget | 0.00–0.11 | 0.46 in adolescence, 0.23 in early adulthood, about 0.1 elsewhere | @@DECISIONS@@ | Job offers and the Social Security claim. Under budget everywhere. |
-| Feed lines per life | — | 112 | 169 | @@LINES@@ | Adult years now read as a working life. |
-| Lives in which some text variant appears more than twice | none | 99% | 99% | @@REPEATS@@ | Still missed: reviews, tax returns and year summaries recur every year of a long working life. More text is Milestone 6. |
-| Computing time per simulated year | under 20 ms in Node | 0.14 ms | 0.9 ms | @@MS@@ | 5,000 lives take five minutes on four cores. |
+| Significant feed items by source | player ≥ 50%, NPC ≈ 25%, structural ≈ 15%, chance ≤ 10% | 36 / 0 / 56 / 8 | 37 / 22 / 38 / 4 | player 59%, NPC 8%, structural 32%, chance 2% | Work and money are mostly the player's own doing. The NPC share falls because nobody but the family exists yet. |
+| Decisions opened per year | within the pacing budget | 0.00–0.11 | 0.46 in adolescence, 0.23 in early adulthood, about 0.1 elsewhere | 0.86 in adolescence, 0.87 in early adulthood, 0.37 in midlife, 0.32 in later working years | Job offers and the Social Security claim. Under budget everywhere. |
+| Feed lines per life | — | 112 | 169 | 287 | Adult years now read as a working life. |
+| Lives in which some text variant appears more than twice | none | 99% | 99% | 99% | Still missed: reviews, tax returns and year summaries recur every year of a long working life. More text is Milestone 6. |
+| Computing time per simulated year | under 20 ms in Node | 0.14 ms | 0.9 ms | 3.1 ms | 5,000 lives take five minutes on four cores. |
 | Time for one year in the browser | under 150 ms | about 40 ms | not re-measured | under 160 ms including an 80 ms pause per key press in the test | Played to 23 in headless Chromium with no errors; phone width has no horizontal scrolling. |
 
 ## Not yet calibrated

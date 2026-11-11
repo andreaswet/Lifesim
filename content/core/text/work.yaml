@@ -143,6 +143,12 @@
   variants:
     - when: "!fact.lapsed"
       text: "You turn down the job at {fact.employer}."
+    - when: "!fact.lapsed"
+      text: "You tell {fact.employer} no, politely, and mean it."
+    - when: "!fact.lapsed"
+      text: "You decide the job at {fact.employer} is not for you."
+    - when: "!fact.lapsed && work.status == 'unemployed'"
+      text: "{fact.employer} offers, and you say no. It is not the work you are looking for, even now."
     - when: "fact.lapsed"
       text: "You never answer {fact.employer}, and the offer goes to someone else."
 
