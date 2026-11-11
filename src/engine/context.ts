@@ -143,8 +143,7 @@ export function applyEffects(ctx: Ctx, effects: readonly CEffect[], subject: Per
         adjustStock(ctx, subject, effect.stock, evalNumber(effect.delta, env), effect.cause)
         break
       case 'setPolicy':
-        if (effect.activity) subject.policies.activity = effect.activity
-        if (effect.study) subject.policies.study = effect.study
+        Object.assign(subject.policies, effect.policy)
         break
       case 'setFlag': {
         const v = evalExpr(effect.value, env)

@@ -1,0 +1,295 @@
+# Work (design §7.13). Pay, hours and terms are exact: they come in an offer letter or on a pay
+# slip. How the work is going is told the way a person learns it, at a review or from the signs.
+
+- id: work.hired
+  fact: hired
+  variants:
+    - when: "fact.which == 'first' && fact.partTime && self.age < 19"
+      text: "Your first job: {fact.hours} hours a week as {an(fact.title)} at {fact.employer}. The first pay slip is smaller than you had worked out, and you find out what withholding is."
+    - when: "fact.which == 'first' && fact.partTime && self.age < 19"
+      text: "{fact.employer} takes you on as {an(fact.title)}, {fact.hours} hours a week around school. {fact.manager} shows you where the aprons are kept and where to stand."
+    - when: "fact.which == 'first' && fact.partTime && self.age >= 19"
+      text: "You start part-time as {an(fact.title)} at {fact.employer}: {fact.hours} hours a week, {money(fact.salary)} a year. It is the first job you have held."
+    - when: "fact.which == 'first' && !fact.partTime && !fact.trainee"
+      text: "You start your first full-time job, as {an(fact.title)} at {fact.employer}, on {money(fact.salary)} a year. {fact.manager} walks you round on the first morning and you forget every name."
+    - when: "fact.which == 'first' && !fact.partTime && !fact.trainee"
+      text: "{fact.employer} hires you as {an(fact.title)} at {money(fact.salary)} a year. It is the first time anyone has paid you a salary."
+    - when: "fact.trainee"
+      text: "{fact.employer} takes you on as {fact.title}, at {money(fact.salary)} a year while you train. The real pay comes with the license, some years off."
+    - when: "fact.trainee"
+      text: "You start as {fact.title} at {fact.employer}. The pay, {money(fact.salary)}, is a trainee's; the point is what it leads to."
+    - when: "fact.which == 'new' && !fact.trainee && fact.months >= 6"
+      text: "After {span(fact.months)} out of work, you start as {an(fact.title)} at {fact.employer}, on {money(fact.salary)} a year."
+    - when: "fact.which == 'new' && !fact.trainee && fact.months >= 6"
+      text: "{fact.employer} hires you as {an(fact.title)}: {money(fact.salary)} a year. It has been {span(fact.months)} since your last pay slip."
+    - when: "fact.which == 'new' && !fact.trainee && fact.months < 6"
+      text: "You start as {an(fact.title)} at {fact.employer}, on {money(fact.salary)} a year."
+    - when: "fact.which == 'new' && !fact.trainee && fact.months < 6"
+      text: "A new job: {fact.title} at {fact.employer}, {money(fact.salary)} a year. You report to {fact.manager}."
+    - when: "fact.which == 'new' && !fact.trainee && fact.months < 6 && fact.partTime"
+      text: "{fact.employer} takes you on as {an(fact.title)}, {fact.hours} hours a week."
+    - when: "fact.which == 'moved' && !fact.trainee"
+      text: "You leave for {fact.employer}, as {an(fact.title)} on {money(fact.salary)} a year."
+    - when: "fact.which == 'moved' && !fact.trainee"
+      text: "You hand in your notice and start at {fact.employer} as {an(fact.title)}. The new salary is {money(fact.salary)}."
+    - when: "fact.which == 'moved' && !fact.trainee"
+      text: "A new employer, {fact.employer}, and a new desk. You are {an(fact.title)} there, on {money(fact.salary)}."
+    - fallback: true
+      text: "You start work as {an(fact.title)} at {fact.employer}."
+
+- id: work.lost
+  fact: job_lost
+  variants:
+    - when: "fact.which == 'layoffs' && fact.warned"
+      text: "{fact.employer} lets you go in {world.monthName}, along with a good part of the floor. It had been coming for months."
+    - when: "fact.which == 'layoffs' && fact.warned"
+      text: "The layoffs at {fact.employer} reach you. After {span(fact.months)} there, you carry a box to the car."
+    - when: "fact.which == 'layoffs' && !fact.warned"
+      text: "{fact.employer} lays you off in {world.monthName}. You had not seen it coming."
+    - when: "fact.which == 'layoffs'"
+      text: "Your job as {an(fact.title)} at {fact.employer} is cut. The meeting takes eleven minutes."
+    - when: "fact.which == 'closed'"
+      text: "{fact.employer} closes. Everyone who was left is out, you among them."
+    - when: "fact.which == 'closed'"
+      text: "The doors at {fact.employer} shut for good in {world.monthName}, and your job goes with them."
+    - when: "fact.which == 'sudden'"
+      text: "With no warning, {fact.employer} tells you your position has been eliminated."
+    - when: "fact.which == 'sudden'"
+      text: "You are let go from {fact.employer} on an ordinary {world.monthName} morning. Nothing had suggested it."
+    - when: "fact.which == 'dismissed'"
+      text: "{fact.employer} dismisses you. The review had said in plain words that this could happen."
+    - when: "fact.which == 'dismissed'"
+      text: "You are fired from {fact.employer} after {span(fact.months)}. Being let go for cause, you are not entitled to unemployment benefit."
+    - when: "fact.which != 'dismissed' && fact.benefit > 0"
+      text: "You lose your job as {an(fact.title)} at {fact.employer}. Unemployment insurance will pay {money(fact.benefit)} a week for up to {fact.weeks} weeks."
+    - when: "fact.which != 'dismissed' && fact.benefit == 0"
+      text: "You lose your job at {fact.employer}. You have not worked long enough to draw unemployment benefit."
+
+- id: work.quit
+  fact: job_quit
+  variants:
+    - text: "You quit your job at {fact.employer}."
+    - text: "You give notice at {fact.employer} and work out your last two weeks."
+    - when: "fact.months < 6"
+      text: "After {span(fact.months)}, you walk away from the job at {fact.employer}."
+    - when: "fact.months >= 36"
+      text: "You leave {fact.employer} after {span(fact.months)}. There is a card, signed by people whose surnames you never learned."
+
+- id: work.review
+  fact: review
+  variants:
+    - when: "fact.which == 'strong'"
+      text: "Your review at {fact.employer} is a strong one. {fact.manager} puts you down for a {fact.raise}% raise; your pay goes to {money(fact.salary)}."
+    - when: "fact.which == 'strong'"
+      text: "{fact.manager} has nothing but good to say at your review. The raise is {fact.raise}%."
+    - when: "fact.which == 'good'"
+      text: "A good review from {fact.manager}, and {fact.raise}% more: {money(fact.salary)} a year."
+    - when: "fact.which == 'good'"
+      text: "Your yearly review goes well. Your pay rises to {money(fact.salary)}."
+    - when: "fact.which == 'adequate' && fact.raise > 0"
+      text: "Your review says you meet expectations. The raise, {fact.raise}%, is the one everybody gets."
+    - when: "fact.which == 'adequate' && fact.raise > 0"
+      text: "{fact.manager} calls your year solid, which is the word used for work nobody has noticed. Your pay goes to {money(fact.salary)}."
+    - when: "fact.which == 'adequate' && fact.raise == 0"
+      text: "Your review is neither good nor bad, and there is no raise this year."
+    - when: "fact.which == 'poor' && !fact.again"
+      text: "Your review is a bad one. {fact.manager} says the work has to improve, and that the conversation is going on file."
+    - when: "fact.which == 'poor' && !fact.again"
+      text: "{fact.manager} tells you at your review that you are not meeting expectations. It is a warning, and it is meant as one."
+    - when: "fact.which == 'poor' && fact.again"
+      text: "A second bad review. {fact.manager} does not soften it this time."
+
+- id: work.promoted
+  fact: promoted
+  variants:
+    - when: "fact.which == 'rung'"
+      text: "You are promoted to {fact.title} at {fact.employer}. The pay goes to {money(fact.salary)}."
+    - when: "fact.which == 'rung'"
+      text: "{fact.employer} makes you {an(fact.title)}, on {money(fact.salary)} a year."
+    - when: "fact.which == 'rung'"
+      text: "A promotion: {fact.title}, {money(fact.salary)}. The work is much the same; people now ask you how it is done."
+    - when: "fact.which == 'management'"
+      text: "{fact.employer} puts you in charge: you are {an(fact.title)} now, on {money(fact.salary)}. The people you ate lunch with report to you."
+    - when: "fact.which == 'management'"
+      text: "You move up to {fact.title} at {fact.employer}, at {money(fact.salary)} a year. Less of the work is the work now, and more of it is people."
+    - when: "fact.which == 'qualified'"
+      text: "Your training is finished and the license is yours. You are {an(fact.title)}, and {fact.employer} pays you {money(fact.salary)} for it."
+    - when: "fact.which == 'qualified'"
+      text: "You qualify. No longer a trainee, you are {an(fact.title)} on {money(fact.salary)} a year."
+
+# Warning signs at a struggling employer (design §9.2). Unnoticed ones are logged hidden.
+- id: work.signal
+  fact: work_signal
+  variants:
+    - when: "fact.which == 'hiring_freeze'"
+      text: "{fact.employer} stops hiring. A desk that emptied in spring is still empty."
+    - when: "fact.which == 'hiring_freeze'"
+      text: "Word goes round at {fact.employer} that no vacancy will be filled until further notice."
+    - when: "fact.which == 'departures'"
+      text: "Two of the longest-serving people at {fact.employer} leave within a month of each other. Neither says much about why."
+    - when: "fact.which == 'departures'"
+      text: "People who would know have started leaving {fact.employer}."
+    - when: "fact.which == 'late_payments'"
+      text: "Your expenses at {fact.employer} are reimbursed six weeks late, with an apology from accounts."
+    - when: "fact.which == 'late_payments'"
+      text: "A supplier stops delivering to {fact.employer} until its invoices are paid."
+    - when: "fact.which == 'cutbacks'"
+      text: "{fact.employer} cancels the overtime and the training budget in the same week."
+    - when: "fact.which == 'cutbacks'"
+      text: "{fact.manager} is called into meetings with the door shut, and comes out of them saying less than before."
+
+- id: work.offer_declined
+  fact: offer_declined
+  variants:
+    - when: "!fact.lapsed"
+      text: "You turn down the job at {fact.employer}."
+    - when: "!fact.lapsed"
+      text: "You tell {fact.employer} no, politely, and mean it."
+    - when: "!fact.lapsed"
+      text: "You decide the job at {fact.employer} is not for you."
+    - when: "!fact.lapsed && work.status == 'unemployed'"
+      text: "{fact.employer} offers, and you say no. It is not the work you are looking for, even now."
+    - when: "fact.lapsed"
+      text: "You never answer {fact.employer}, and the offer goes to someone else."
+
+- id: work.negotiated
+  fact: negotiated
+  variants:
+    - when: "fact.which == 'raised'"
+      text: "You ask {fact.employer} for more, and get it: {money(fact.salary)}."
+    - when: "fact.which == 'raised'"
+      text: "{fact.employer} comes back with {money(fact.salary)}. Asking cost you one uncomfortable phone call."
+    - when: "fact.which == 'unchanged'"
+      text: "You ask {fact.employer} for more. The answer is that the offer stands as it is, and you take it."
+    - when: "fact.which == 'withdrawn'"
+      text: "You ask {fact.employer} for more, and they withdraw the offer."
+
+- id: work.search_report
+  fact: search_report
+  variants:
+    - when: "fact.months < 6"
+      text: "{cap(span(fact.months))} of looking for work as {an(fact.title)}: about {fact.applications} applications, a few replies, no offer."
+    - when: "fact.months < 6"
+      text: "You keep applying. Most of what you send out is never answered."
+    - when: "fact.months >= 6"
+      text: "You have been out of work for {span(fact.months)}. Interviewers now ask what you have been doing since."
+    - when: "fact.months >= 6"
+      text: "{cap(span(fact.months))} without work. You have stopped telling people how many applications that is."
+    - when: "fact.months >= 12"
+      text: "Still nothing. After {span(fact.months)}, the gap on your résumé has become the first thing anyone sees."
+
+- id: work.looking_for
+  fact: looking_for
+  variants:
+    - when: "!fact.any && !fact.working"
+      text: "You set your mind on finding work as {an(fact.title)}."
+    - when: "!fact.any && fact.working"
+      text: "You start watching for openings as {an(fact.title)}."
+    - when: "fact.any"
+      text: "You decide to take whatever work you can get."
+
+- id: work.retired
+  fact: retired
+  variants:
+    - when: "fact.title != '' && fact.years >= 20"
+      text: "You retire, after {fact.years} years of work. On the first Monday you wake at the usual time anyway."
+    - when: "fact.title != '' && fact.years >= 20"
+      text: "Your last day as {an(fact.title)}. There is a cake, a speech by someone who joined last year, and then the rest of your life."
+    - when: "fact.title != '' && fact.years < 20"
+      text: "You stop working for good."
+    - when: "fact.title == ''"
+      text: "You stop looking for work. From now on you are retired, whatever the forms call it."
+    - when: "fact.pension > 0"
+      text: "You retire. The pension you earned will pay {money(fact.pension)} a month."
+
+- id: work.benefit_claimed
+  fact: benefit_claimed
+  variants:
+    - text: "You claim Social Security at {fact.age}. It will pay {money(fact.monthly)} a month, rising with prices, for as long as you live."
+    - text: "Your first Social Security payment arrives: {money(fact.monthly)}, the sum of every pay slip you ever had, run through a formula."
+
+- id: work.benefits_ended
+  fact: benefits_ended
+  variants:
+    - text: "Your unemployment benefit runs out. From here it is savings, or nothing."
+    - text: "The last unemployment payment arrives, {span(fact.months)} after the job ended."
+
+- id: work.policy
+  fact: policy_changed
+  variants:
+    - when: "fact.which == 'effort' && fact.to == 'push'"
+      text: "You start putting more into the job: earlier in, later out."
+    - when: "fact.which == 'effort' && fact.to == 'coast'"
+      text: "You decide the job gets what it pays for and no more."
+    - when: "fact.which == 'effort' && fact.to == 'steady'"
+      text: "You settle into an ordinary working day."
+    - when: "fact.which == 'search' && fact.to == 'active'"
+      text: "You start looking for work in earnest."
+    - when: "fact.which == 'search' && fact.to == 'open'"
+      text: "You let it be known that you would listen to an offer."
+    - when: "fact.which == 'search' && fact.to == 'none'"
+      text: "You stop looking for work."
+    - when: "fact.which == 'lifestyle' && fact.direction == 'up'"
+      text: "You loosen your spending."
+    - when: "fact.which == 'lifestyle' && fact.direction == 'down'"
+      text: "You tighten your spending. The first month is the hardest."
+    - when: "fact.which == 'saving' && fact.direction == 'up'"
+      text: "You start putting more of your pay away."
+    - when: "fact.which == 'saving' && fact.direction == 'down'"
+      text: "You cut back what you put away."
+
+# Decisions.
+- id: prompt.work.offer
+  variants:
+    - when: "fact.outside && !fact.trainee"
+      text: "{fact.employer} wants you as {an(fact.title)}: {money(fact.salary)} a year for {fact.hours} hours a week. You make {money(fact.current)} now."
+    - when: "!fact.outside && fact.trainee"
+      text: "{fact.employer} offers to take you on as {fact.title}: {money(fact.salary)} a year while you train."
+    - when: "!fact.outside && fact.partTime"
+      text: "{fact.employer} offers you part-time work as {an(fact.title)}: {fact.hours} hours a week, {money(fact.salary)} a year."
+    - when: "!fact.outside && !fact.partTime && fact.insured"
+      text: "An offer: {fact.title} at {fact.employer}, {money(fact.salary)} a year, with health insurance."
+    - when: "!fact.outside && !fact.partTime && !fact.insured"
+      text: "An offer: {fact.title} at {fact.employer}, {money(fact.salary)} a year. There is no health insurance with it."
+    - text: "{fact.employer} offers you a job as {an(fact.title)}, at {money(fact.salary)} a year for {fact.hours} hours a week."
+
+- id: label.work.accept
+  variants: [{ text: "Take the job" }]
+- id: label.work.negotiate
+  variants: [{ text: "Ask for more money first" }]
+- id: label.work.decline
+  variants:
+    - when: "fact.outside"
+      text: "Stay where you are"
+    - text: "Turn it down and keep looking"
+
+- id: prompt.work.claim
+  variants:
+    - when: "fact.age < fact.fullAge"
+      text: "You are {fact.age} and can claim Social Security. Claimed now it would pay {money(fact.monthly)} a month for life; every year you wait, up to seventy, makes it larger."
+    - when: "fact.age >= fact.fullAge"
+      text: "You have reached full retirement age. Social Security would pay {money(fact.monthly)} a month from now; waiting until seventy still adds to it."
+    - text: "You can claim Social Security: {money(fact.monthly)} a month if you start now."
+- id: label.work.claim
+  variants: [{ text: "Claim it now" }]
+- id: label.work.wait
+  variants: [{ text: "Wait another year" }]
+
+# Actions.
+- id: label.act.look_for
+  variants:
+    - when: "fact.current != ''"
+      text: "Look for a different kind of work (now: {fact.current})"
+    - text: "Look for a particular kind of work"
+- id: label.act.look_for_anything
+  variants: [{ text: "whatever I can get" }]
+- id: label.act.quit
+  variants: [{ text: "Quit your job at {fact.employer}" }]
+- id: label.act.retire
+  variants: [{ text: "Retire" }]
+
+- id: work.policy.other
+  fact: policy_changed
+  variants:
+    - fallback: true
+      text: "You change how you go about things: {fact.label}."

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { checkInvariants, simulationHash, type GameState } from '../src/engine'
+import { checkInvariants, netWorth, simulationHash, type GameState } from '../src/engine'
 import { playYear, type Strategy } from '../src/tools/players'
 import { newLife, realContent, testEnv } from './helpers'
 
@@ -30,6 +30,10 @@ function summary(s: GameState) {
     decisions: count('decision_opened'),
     bandChanges: count('band_changed'),
     finalActivity: self.policies.activity,
+    jobs: (self.work?.history.length ?? 0) + (self.work?.job ? 1 : 0),
+    occupation: self.work?.history.at(-1)?.occupation ?? null,
+    estateIn2026Dollars: Math.round(netWorth(s, 'p1') / s.world.priceLevel),
+    recessions: s.world.recessions,
     cardio: Number(self.body.cardio.toFixed(6)),
     simulation: simulationHash({ ...s, meta: { ...s.meta, contentHash: '' } }),
   }

@@ -1,0 +1,52 @@
+# Federal taxes and Social Security (design §7.14, §7.13), as they stand for tax year 2025.
+# Institutions are frozen in real terms (design decision Q7): every dollar figure here is in
+# start-year dollars and rises with prices. State income tax is one effective rate per state, in
+# places/states.csv.
+source: "IRS Revenue Procedure 2024-40 (2025 inflation adjustments); SSA 2025 fact sheet (memory)"
+asOf: 2025
+
+standardDeduction: { single: 15000, joint: 30000, head: 22500 }
+# [rate, taxable income up to which it applies].
+brackets:
+  single: [[0.10, 11925], [0.12, 48475], [0.22, 103350], [0.24, 197300], [0.32, 250525], [0.35, 626350], [0.37, 0]]
+  joint: [[0.10, 23850], [0.12, 96950], [0.22, 206700], [0.24, 394600], [0.32, 501050], [0.35, 751600], [0.37, 0]]
+  head: [[0.10, 17000], [0.12, 64850], [0.22, 103350], [0.24, 197300], [0.32, 250500], [0.35, 626350], [0.37, 0]]
+
+# The employee's share. The Social Security part stops at the wage base.
+payroll: { socialSecurity: 0.062, medicare: 0.0145, wageBase: 176100 }
+
+# $2,000 a child under 17; up to $1,700 of it is paid even when no tax is owed, at 15% of
+# earnings above $2,500. It shrinks by 5% of income above the threshold.
+childCredit:
+  perChild: 2000
+  refundable: 1700
+  earnedAbove: 2500
+  refundRate: 0.15
+  phaseOut: { single: 200000, joint: 400000, head: 200000 }
+  underAge: 17
+
+earnedIncomeCredit:
+  source: "IRS, Earned Income and Earned Income Tax Credit tables for 2025 (memory)"
+  byChildren:
+    - { max: 649, phaseIn: 0.0765, phaseOutStart: 10620, phaseOutStartJoint: 17730, phaseOut: 0.0765 }
+    - { max: 4328, phaseIn: 0.34, phaseOutStart: 23350, phaseOutStartJoint: 30470, phaseOut: 0.1598 }
+    - { max: 7152, phaseIn: 0.40, phaseOutStart: 23350, phaseOutStartJoint: 30470, phaseOut: 0.2106 }
+    - { max: 8046, phaseIn: 0.45, phaseOutStart: 23350, phaseOutStartJoint: 30470, phaseOut: 0.2106 }
+  childlessAges: [25, 64]
+
+# Share of unemployment, pension and Social Security income counted as taxable. Really 100% of
+# the first two and 0–85% of the third; one figure stands in for all three.
+benefitsTaxableShare: 0.6
+
+# The retirement benefit: the best 35 years of earnings, averaged by month, through a formula
+# with two bend points, then adjusted for the age at which it is claimed.
+socialSecurity:
+  source: "SSA, Primary Insurance Amount formula and bend points for 2025; early and delayed retirement (memory)"
+  bendPoints: [1226, 7391]
+  rates: [0.90, 0.32, 0.15]
+  years: 35
+  fullAge: 67
+  earliestAge: 62
+  latestAge: 70
+  earlyPerMonth: [0.005556, 0.004167]
+  delayedPerMonth: 0.006667

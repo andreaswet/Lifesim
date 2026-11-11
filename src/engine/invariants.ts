@@ -8,6 +8,7 @@ import type { Prepared } from './content/prepare'
 import { STOCK_IDS } from './content/schema'
 import type { GameState } from './state'
 import { systemDecisionExists } from './systems/decisions'
+import { KINDS } from './systems/money'
 
 export function checkInvariants(state: GameState, content: Prepared): string[] {
   const problems: string[] = []
@@ -71,6 +72,57 @@ export function checkInvariants(state: GameState, content: Prepared): string[] {
     }
     if (!(home.income >= 0)) fail(`household ${home.id} has negative income`)
   }
+
+  // Money is conserved: every movement took from one account what it gave to another (design §7.14).
+  let total = 0
+  for (const key in state.accounts) {
+    const cents = state.accounts[key]!
+    if (!Number.isInteger(cents)) fail(`account ${key} is not in whole cents`)
+    total += cents
+    const [owner, kind] = key.split(':')
+    if (owner === 'world') continue
+    if (!state.people[owner!]) fail(`account ${key} belongs to nobody`)
+    if (!(KINDS as readonly string[]).includes(kind!)) fail(`account ${key} is of an unknown kind`)
+    if ((kind === 'card' || kind === 'student' || kind === 'private' || kind === 'mortgage') && cents > 0) fail(`debt account ${key} has a positive balance`)
+    if ((kind === 'invest' || kind === 'retire' || kind === 'home') && cents < 0) fail(`asset account ${key} is negative`)
+    if (kind === 'cash' && cents < -100) fail(`bank account ${key} is overdrawn`)
+  }
+  if (total !== 0) fail(`accounts do not sum to zero (off by ${total} cents)`)
+  for (const person of Object.values(state.people)) {
+    // Whoever owns a home lives in it and pays for it.
+    if (!person.died && ((state.accounts[`${person.id}:home`] ?? 0) > 0 || (state.accounts[`${person.id}:mortgage`] ?? 0) < 0)) {
+      const home = person.householdId ? state.households[person.householdId] : undefined
+      if (!home || home.housing.tenure !== 'own' || home.housing.payer !== person.id) fail(`${person.id} owns a home they do not live in`)
+    }
+    if (!person.died) continue
+    for (const kind of KINDS) if ((state.accounts[`${person.id}:${kind}`] ?? 0) !== 0) fail(`${person.id} has died but still holds a ${kind} balance`)
+  }
+
+  // Work: jobs point at real occupations and employers; nobody holds a job they are not qualified for.
+  for (const person of Object.values(state.people)) {
+    const work = person.work
+    if (!work) continue
+    if ((work.status === 'employed') !== (work.job !== null)) fail(`${person.id} work status and job disagree`)
+    if (person.died && work.job) fail(`${person.id} has died but still holds a job`)
+    const job = work.job
+    if (job) {
+      const occ = content.occupations.get(job.occupation)
+      if (!occ) fail(`${person.id} holds an unknown occupation '${job.occupation}'`)
+      else if (occ.credential && job.level >= 0 && !person.credentials.includes(occ.credential)) fail(`${person.id} works as ${occ.id} without the credential it needs`)
+      if (!state.orgs[job.orgId]) fail(`${person.id} works for an employer that does not exist`)
+      if (!(job.salary >= 0) || !(job.performance >= 0 && job.performance <= 1) || !(job.hoursPerWeek > 0 && job.hoursPerWeek <= 80)) fail(`${person.id} has an out-of-range job value`)
+    }
+    for (const id in work.skills) if (!(work.skills[id]! >= 0 && work.skills[id]! <= 1)) fail(`${person.id} skill in ${id} is out of range`)
+  }
+  for (const home of Object.values(state.households)) {
+    const h = home.housing
+    if (h.payer !== null && !state.people[h.payer]) fail(`household ${home.id} is paid for by nobody`)
+    if (h.tenure !== 'own' && h.mortgage) fail(`household ${home.id} has a mortgage on a home it does not own`)
+    if (!(h.rent >= 0) || h.arrears < 0) fail(`household ${home.id} has an out-of-range housing value`)
+  }
+  const w = state.world
+  for (const value of [w.priceLevel, w.wageIndex, w.stockIndex, w.bondIndex, w.housingIndex]) if (!(value > 0 && value < 1e12)) fail(`an economic index is out of range: ${value}`)
+  if (!(w.unemployment >= 1 && w.unemployment <= 30)) fail(`unemployment is out of range: ${w.unemployment}`)
 
   for (const proc of Object.values(state.processes)) {
     const subject = state.people[proc.subjectId]

@@ -11,7 +11,7 @@ import type { PlayerView } from '../engine/view'
 import type { Explanation } from '../narrative/why'
 
 export type { Command, PlayerView, Explanation }
-export type { ActionView, DecisionView, FamilyMember, FeedItem, PolicyView, SchoolView } from '../engine/view'
+export type { ActionView, DecisionView, FamilyMember, FeedItem, MoneyView, PolicyView, SchoolView, WorkView } from '../engine/view'
 
 export interface NewLifeOptions {
   seed: string
@@ -20,11 +20,14 @@ export interface NewLifeOptions {
   sex?: 'male' | 'female'
   /** State id to be born in. */
   state?: string
+  /** Group id (design decision Q1). */
+  ethnicity?: string
 }
 
 /** What the start screen needs to offer its choices. */
 export interface Setup {
   states: Array<{ id: string; name: string }>
+  groups: Array<{ id: string; label: string }>
 }
 
 export type Request =

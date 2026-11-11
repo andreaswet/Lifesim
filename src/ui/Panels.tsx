@@ -1,6 +1,6 @@
 import type { RefObject } from 'preact'
 import { useRef, useState } from 'preact/hooks'
-import type { ActionView, PlayerView, PolicyView } from '../app/protocol'
+import type { ActionView, MoneyView, PlayerView, PolicyView } from '../app/protocol'
 import type { Actions } from './App'
 import { Why } from './Game'
 
@@ -14,7 +14,7 @@ function Policy({ name, title, policy, busy, onChoose }: { name: string; title: 
           <label key={option.id} class={option.id === policy.current ? 'choice current' : 'choice'}>
             <input type="radio" name={name} checked={option.id === policy.current} disabled={!policy.canChange || busy} onChange={() => onChoose(option.id)} />
             <span class="label">{option.label}</span>
-            <span class="costs">{option.hoursPerWeek === 0 ? 'no time' : `${option.hoursPerWeek} hour${option.hoursPerWeek === 1 ? '' : 's'} a week`}</span>
+            {option.hoursPerWeek !== undefined && <span class="costs">{option.hoursPerWeek === 0 ? 'no time' : `${option.hoursPerWeek} hour${option.hoursPerWeek === 1 ? '' : 's'} a week`}</span>}
             <span class="desc">{option.description}</span>
           </label>
         ))}
@@ -59,6 +59,12 @@ export function FamilyPanel({ view, compact }: { view: PlayerView; compact: bool
       )}
     </section>
   )
+}
+
+export type PolicyKey = 'activity' | 'study' | 'effort' | 'search' | 'lifestyle' | 'saving'
+
+function setPolicy(actions: Actions, policy: Partial<Record<PolicyKey, string>>): void {
+  void actions.send({ type: 'command', command: { type: 'setPolicy', policy } })
 }
 
 function ActionButton({ action, actions, busy }: { action: ActionView; actions: Actions; busy: boolean }) {
@@ -141,6 +147,137 @@ export function SchoolPanel({ view, actions, busy, compact }: { view: PlayerView
           ))}
         </div>
       )}
+    </section>
+  )
+}
+
+function Actions_({ view, section, actions, busy }: { view: PlayerView; section: string; actions: Actions; busy: boolean }) {
+  const mine = view.actions.filter((a) => a.section === section)
+  if (mine.length === 0) return null
+  return (
+    <div class="acts">
+      {mine.map((a) => (
+        <ActionButton key={a.id} action={a} actions={actions} busy={busy} />
+      ))}
+    </div>
+  )
+}
+
+function Record({ facts }: { facts: Array<{ label: string; value: string }> }) {
+  if (facts.length === 0) return null
+  return (
+    <dl class="record">
+      {facts.map((f) => (
+        <div key={f.label}>
+          <dt>{f.label}</dt>
+          <dd>{f.value}</dd>
+        </div>
+      ))}
+    </dl>
+  )
+}
+
+export function WorkPanel({ view, actions, busy, compact }: { view: PlayerView; actions: Actions; busy: boolean; compact: boolean }) {
+  const work = view.work
+  if (!work.line && work.history.length === 0 && !work.search) return null
+  if (compact && !work.line) return null
+  return (
+    <section class="card">
+      <h2>Work</h2>
+      {work.line && <p class="lead">{work.line}</p>}
+      <Record facts={compact ? work.facts.slice(0, 2) : work.facts} />
+      {!compact && (
+        <>
+          <Actions_ view={view} section="work" actions={actions} busy={busy} />
+          {work.effort && <Policy name="effort" title="How hard you work" policy={work.effort} busy={busy} onChoose={(effort) => setPolicy(actions, { effort })} />}
+          {work.search && <Policy name="search" title="Looking for work" policy={work.search} busy={busy} onChoose={(search) => setPolicy(actions, { search })} />}
+          {work.history.length > 0 && (
+            <>
+              <h3>Earlier jobs</h3>
+              <ul class="people">
+                {work.history.map((h, i) => (
+                  <li key={`${h.employer}-${i}`}>
+                    <span class="who">
+                      <strong>{h.title}</strong>, {h.employer}
+                    </span>
+                    <span class="meta">
+                      {h.years} · {h.ended}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+        </>
+      )}
+    </section>
+  )
+}
+
+function amount(value: number, real: boolean, money: MoneyView): string {
+  const shown = real ? value * money.deflator : value
+  const text = Math.abs(Math.round(shown)).toLocaleString('en-US')
+  return `${shown < -0.5 ? '−' : ''}$${text}`
+}
+
+export function MoneyPanel({ view, actions, busy, compact }: { view: PlayerView; actions: Actions; busy: boolean; compact: boolean }) {
+  const [real, setReal] = useState(false)
+  const money = view.money
+  if (!money.line && money.accounts.length === 0) return null
+  if (compact) {
+    return (
+      <section class="card">
+        <h2>Money</h2>
+        <p class="sub">{money.line}</p>
+        <dl class="record">
+          <div>
+            <dt>Net worth</dt>
+            <dd>{amount(money.netWorth, false, money)}</dd>
+          </div>
+        </dl>
+      </section>
+    )
+  }
+  return (
+    <section class="card">
+      <h2>Money</h2>
+      {money.line && <p class="lead">{money.line}</p>}
+      <label class="toggle">
+        <input type="checkbox" checked={real} onChange={(e) => setReal(e.currentTarget.checked)} />
+        <span>Show amounts in {money.baseYear} dollars</span>
+      </label>
+      {money.accounts.length > 0 && (
+        <dl class="record">
+          {money.accounts.map((a) => (
+            <div key={a.label}>
+              <dt>{a.label}</dt>
+              <dd>{amount(a.amount, real, money)}</dd>
+            </div>
+          ))}
+          <div class="total">
+            <dt>Net worth</dt>
+            <dd>{amount(money.netWorth, real, money)}</dd>
+          </div>
+        </dl>
+      )}
+      {money.monthly.length > 0 && (
+        <>
+          <h3>Each month</h3>
+          <dl class="record">
+            {money.monthly.map((m) => (
+              <div key={m.label}>
+                <dt>{m.label}</dt>
+                <dd>{amount(m.amount, real, money)}</dd>
+              </div>
+            ))}
+          </dl>
+        </>
+      )}
+      <Record facts={money.facts} />
+      {money.economy && <p class="sub">{money.economy}</p>}
+      <Actions_ view={view} section="money" actions={actions} busy={busy} />
+      {money.lifestyle && <Policy name="lifestyle" title="Spending" policy={money.lifestyle} busy={busy} onChoose={(lifestyle) => setPolicy(actions, { lifestyle })} />}
+      {money.saving && <Policy name="saving" title="Saving" policy={money.saving} busy={busy} onChoose={(saving) => setPolicy(actions, { saving })} />}
     </section>
   )
 }

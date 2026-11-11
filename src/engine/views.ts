@@ -10,7 +10,9 @@ import type { Env } from './core/expr'
 import { clamp } from './core/dmath'
 import { ageInYears, monthOf, seasonOf, yearOf, MONTH_NAMES } from './core/time'
 import type { Prepared } from './content/prepare'
-import { involvement } from './country/us/family'
+import { involvement, povertyLine } from './country/us/family'
+import { jobTitle } from './country/us/work'
+import { netWorth } from './systems/money'
 import { parentsAtHome, relationOf, siblingsOf } from './people'
 import type { GameState, Person, ProcessInstance, Scalar } from './state'
 
@@ -37,6 +39,12 @@ export const ACCESSOR_PATHS: Record<'base' | 'process' | 'fact', string[]> = {
     'self.study',
     'self.olderSiblings',
     'self.siblings',
+    'self.level',
+    'self.ethnicity',
+    'self.strain',
+    'job.*',
+    'work.*',
+    'money.*',
     'home.*',
     'mother.*',
     'father.*',
@@ -46,6 +54,10 @@ export const ACCESSOR_PATHS: Record<'base' | 'process' | 'fact', string[]> = {
     'world.monthName',
     'world.year',
     'world.season',
+    'world.regime',
+    'world.unemployment',
+    'world.inflation',
+    'world.mortgageRate',
   ],
   process: ['process.stage', 'process.monthsInStage', 'process.months'],
   fact: ['fact.*'],
@@ -91,6 +103,8 @@ const PURE_FNS = {
   ordinal: (n: number) => ordinalWord(n),
   span: (months: number) => spanWords(months),
   cap: (s: string) => (s.length ? s[0]!.toUpperCase() + s.slice(1) : s),
+  /** With its article: "an automotive certificate", "a law school". */
+  an: (s: string) => (/^[aeiou]/i.test(s) ? `an ${s}` : `a ${s}`),
   /** A grade average the way a transcript prints it: "3.50". */
   gpa: (n: number) => n.toFixed(2),
   /** Whole dollars with separators: "$12,300". The currency symbol follows the country pack later. */
@@ -118,9 +132,10 @@ export function personView(state: GameState, self: Person, other: Person): Recor
     age: ageInYears(other.born, at),
     alive: !other.died,
     atHome: !other.died && other.householdId !== null && other.householdId === self.householdId,
-    // "working", "out_of_work", or "at_home" for someone who is not in the labor market.
-    work: !work || work.hours === 'none' ? 'at_home' : work.employed ? 'working' : 'out_of_work',
-    partTime: work?.hours === 'part',
+    // "working", "out_of_work", "retired", or "at_home" for someone who is not in the labor market.
+    work: work?.job ? 'working' : work?.status === 'unemployed' ? 'out_of_work' : work?.status === 'retired' ? 'retired' : 'at_home',
+    partTime: (work?.job?.hoursPerWeek ?? 40) < 30,
+    employer: work?.job?.employer ?? '',
     word: relationOf(self, other),
     older: other.born < self.born,
     sex: other.sex,
@@ -131,8 +146,7 @@ export function personView(state: GameState, self: Person, other: Person): Recor
 function homeView(state: GameState, content: Prepared, self: Person): Record<string, unknown> {
   const home = self.householdId ? state.households[self.householdId] : undefined
   const parents = parentsAtHome(state, self)
-  const poverty = content.bundle.country.family.poverty
-  const ratio = home ? home.income / (poverty.base + poverty.perAdditional * Math.max(0, home.members.length - 1)) : 0
+  const ratio = home ? home.income / state.world.priceLevel / povertyLine({ state, content }, home.members.length) : 0
   const attention = involvement({ state, content }, self)
   const mother = self.motherId ? state.people[self.motherId] : undefined
   const father = self.fatherId ? state.people[self.fatherId] : undefined
@@ -152,6 +166,30 @@ function homeView(state: GameState, content: Prepared, self: Person): Record<str
     couple: mother && father && mother.partner?.id === father.id ? mother.partner.status : 'apart',
     school: self.education.school?.name ?? '',
     teacher: self.education.school?.teacher ?? '',
+    // "own", "rent" or "guest", and whether this person is the one who pays for the home.
+    tenure: home?.housing.tenure ?? 'guest',
+    mine: home?.housing.payer === self.id,
+    rent: home?.housing.rent ?? 0,
+  }
+}
+
+function jobView(state: GameState, content: Prepared, p: Person): Record<string, unknown> | null {
+  const job = p.work?.job
+  if (!job) return null
+  const occ = content.occupations.get(job.occupation)
+  return {
+    title: jobTitle(content, job.occupation, job.level),
+    occupation: job.occupation,
+    employer: job.employer,
+    manager: job.manager,
+    salary: job.salary,
+    hours: job.hoursPerWeek,
+    partTime: job.hoursPerWeek < 30,
+    months: state.now - job.started,
+    trainee: job.level < 0,
+    sector: occ?.sector ?? '',
+    physical: occ?.physical ?? 0,
+    stress: occ?.stress ?? 0,
   }
 }
 
@@ -189,19 +227,45 @@ export function makeEnv(state: GameState, content: Prepared, p: Person, extras: 
     study: p.policies.study,
     olderSiblings: siblingsOf(state, p).filter((s) => s.born < p.born).length,
     siblings: siblingsOf(state, p).length,
+    level: p.education.level,
+    ethnicity: p.ethnicity,
+    strain: p.strain,
   }
   const world = {
     month: monthOf(month) + 1,
     monthName: MONTH_NAMES[monthOf(month)]!,
     year: yearOf(month),
     season: seasonOf(month),
+    // "expansion", "recession", "severe" or "recovery".
+    regime: state.world.regime,
+    unemployment: state.world.unemployment,
+    inflation: state.world.inflation,
+    mortgageRate: state.world.mortgageRate,
   }
+  const working = p.work
+  const longest = working ? Object.entries(working.months).sort((a, b) => b[1] - a[1])[0] : undefined
   const mother = p.motherId ? state.people[p.motherId] : undefined
   const father = p.fatherId ? state.people[p.fatherId] : undefined
   const vars: Record<string, unknown> = {
     self,
     world,
     home: homeView(state, content, p),
+    job: jobView(state, content, p),
+    work: {
+      // "none", "employed", "unemployed", "home" or "retired".
+      status: working?.status ?? 'none',
+      monthsOut: working && !working.job && working.since !== null ? month - working.since : 0,
+      jobs: (working?.history.length ?? 0) + (working?.job ? 1 : 0),
+      years: working ? Math.round(Object.values(working.months).reduce((a, b) => a + b, 0) / 12) : 0,
+      longest: longest ? (content.occupations.get(longest[0])?.title ?? '') : '',
+      longestYears: longest ? Math.round(longest[1] / 12) : 0,
+    },
+    money: {
+      worth: Math.round(netWorth(state, p.id)),
+      // Net worth in start-year dollars, for wording that should not drift with prices.
+      worthReal: Math.round(netWorth(state, p.id) / state.world.priceLevel),
+      hardship: (p.money?.hardship ?? 0) > 0,
+    },
     mother: mother ? personView(state, p, mother) : null,
     father: father ? personView(state, p, father) : null,
   }

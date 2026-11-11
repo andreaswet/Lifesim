@@ -1,0 +1,184 @@
+# Household money (design §7.14, §7.2): what living costs, housing, credit, benefits and saving.
+# Every dollar figure is in start-year dollars; the engine applies the price level and, where it
+# matters, the state's price parity. Figures marked (memory) are to be pinned; (calibrated) ones
+# were set with the batch tool.
+source: "BLS Consumer Expenditure Survey 2023; KFF; USDA; Federal Reserve SCF 2022 (memory), with calibrated parameters"
+
+living:
+  source: "BLS Consumer Expenditure Survey 2023, lowest income quintile, excluding shelter and health (memory)"
+  # Food, utilities, transport and the rest of what cannot be gone without.
+  essentials: 0.62
+  childcare:
+    source: "Child Care Aware of America 2023: about $11,600 a year for one child in care (memory)"
+    perChild: 11000
+    underAge: 5
+    # Families who cannot pay that use relatives and neighbors: the bill is capped at this share of income per child.
+    shareOfIncome: 0.1
+  # The standing policy for everything beyond bills: the share of what is left that gets spent.
+  levels:
+    - { id: frugal, label: Frugal, description: "You buy what you need and little else.", spends: 0.6 }
+    - { id: modest, label: Modest, description: "Small comforts; you think before a large purchase.", spends: 0.88 }
+    - { id: comfortable, label: Comfortable, description: "You live to your income, more or less.", spends: 1.0 }
+    - { id: free, label: Free-spending, description: "If there is money, it gets spent. Sometimes before it arrives.", spends: 1.06 }
+  default: comfortable
+
+saving:
+  source: "Vanguard, How America Saves 2024; Federal Reserve SCF 2022 (memory)"
+  levels:
+    - { id: none, label: Nothing put by, description: "No retirement contributions. Spare cash stays in the bank.", retirement: 0, invests: false, bufferMonths: 1 }
+    - { id: match, label: Just the match, description: "Enough into the retirement plan to collect what the employer adds, when there is a plan.", retirement: 0.04, invests: false, bufferMonths: 2 }
+    - { id: steady, label: Steady saver, description: "A tenth of your pay to retirement; cash beyond three months' costs goes into an index fund.", retirement: 0.10, invests: true, bufferMonths: 3 }
+    - { id: heavy, label: Saving hard, description: "A sixth of your pay to retirement, and everything spare invested.", retirement: 0.16, invests: true, bufferMonths: 3 }
+  default: match
+  # An employer with a plan adds this share of pay, at most, to what the worker puts in.
+  matchRate: [0.03, 0.05]
+  # Once retired, people spend their savings down: this share of what they hold each year, by age
+  # (close to the IRS required minimum distributions, which most retirees follow).
+  drawdown: [[60, 0.04], [72, 0.04], [80, 0.06], [90, 0.1], [100, 0.16]]
+  # Everyone spends a little of what they have saved outside retirement accounts each year
+  # (a marginal propensity to consume out of wealth of a few cents per dollar; Carroll, Otsuka & Slacalek 2011).
+  wealthSpending: [[18, 0.04], [60, 0.04], [75, 0.06], [90, 0.1]]
+  # Share of a retirement account held in stocks, by age; the rest is in bonds.
+  stockShare: [[25, 0.9], [45, 0.85], [60, 0.6], [70, 0.4], [85, 0.3]]
+
+# Health costs are an average until Milestone 5: a premium by kind of cover, and typical
+# out-of-pocket spending for a year.
+health:
+  source: "KFF Employer Health Benefits Survey 2024; KFF marketplace benchmark premiums 2025; CMS Medicare premiums 2025; MEPS out-of-pocket spending (memory)"
+  # The worker's own share of an employer plan's premium.
+  employer: { single: 1400, family: 6300 }
+  marketplace:
+    # Benchmark premium for a forty-year-old, and how it scales with age.
+    benchmark: 5960
+    ageFactor: [[18, 0.7], [21, 0.78], [40, 1.0], [50, 1.4], [64, 2.35]]
+    # Share of income a household is expected to pay toward the benchmark, by income as a
+    # multiple of the poverty line (the schedule in force for 2025).
+    contribution: [[1.5, 0], [2, 0.02], [2.5, 0.04], [3, 0.06], [4, 0.085], [10, 0.085]]
+    # People go without when the premium left to pay is above this share of income.
+    buysIfUnder: 0.085
+  # Many people eligible for free or cheap cover never enroll (Census; KFF estimates of eligible uninsured).
+  neverEnroll: 0.04
+  # Care in old age, as an average over everyone of that age (most pay nothing; some pay for years
+  # of help at home or a nursing home). Stands in for long-term care until health arrives in Milestone 5.
+  lateLifeCare:
+    - [70, 0]
+    - [80, 2500]
+    - [90, 9000]
+    - [100, 15000]
+  # Income limits as a multiple of the poverty line: adults in states that expanded Medicaid, and
+  # children everywhere (Medicaid and CHIP together).
+  medicaid: { adults: 1.38, children: 2.5 }
+  # Below this multiple of the poverty line, Medicaid pays Medicare costs (the Medicare Savings Programs).
+  medicare: { age: 65, premium: 2220, helpBelow: 1.35 }
+  outOfPocket: { insured: 1100, publicCover: 150, uninsured: 1600, medicare: 1900, child: 350 }
+
+snap:
+  source: "USDA FNS, SNAP eligibility and maximum allotments, fiscal year 2025 (memory)"
+  # Gross income limit as a multiple of the poverty line.
+  grossLimit: 1.3
+  maxMonthly: [292, 536, 768, 975, 1158, 1390]
+  perAdditional: 220
+  deduction: 204
+  earnedDeduction: 0.2
+  benefitReduction: 0.3
+
+housing:
+  source: "Census ACS 2023 (rent and value by quintile); NAR and Freddie Mac (costs of buying); Eviction Lab (memory)"
+  # Rent and price in each neighborhood tier, relative to the state's median.
+  rentByTier: [0.62, 0.8, 1.0, 1.28, 1.75]
+  priceByTier: [0.5, 0.75, 1.0, 1.35, 2.0]
+  perExtraPerson: 0.1
+  # A young person sharing a place pays this share of the rent.
+  sharedRent: 0.55
+  depositMonths: 1
+  # Landlords want income of this many times the rent, and a credit score of at least this.
+  incomeToRent: 2.5
+  minScore: 560
+  evictionAfterMonths: 3
+  doubleUp: 0.75
+  recordYears: 7
+  # Someone taken in after losing a home pays this share of the cheapest rent.
+  guestRent: 0.3
+  # Insurance and upkeep, percent of the home's value a year.
+  upkeep: 1.6
+  closingCosts: 0.03
+  sellingCosts: 0.06
+  mortgage: { termMonths: 360, minDown: 0.035, fullDown: 0.2, maxDebtToIncome: 0.43, minScore: 620, insurance: 0.7, foreclosureAfterMonths: 4, forcedSale: 0.85 }
+  # About a quarter of first-time buyers use a gift from family toward the down payment.
+  gift:
+    source: "NAR, Profile of Home Buyers and Sellers 2023: 25% of first-time buyers used a gift from family or friends (memory)"
+    ofPrice: 0.1
+    ofSavings: 0.15
+  savingForHome: { share: 0.25, fromAge: 24, untilAge: 45 }
+  # A first-time buyer may borrow from a workplace retirement account toward the down payment.
+  retirementLoan: { share: 0.5, max: 50000 }
+  # Whether a lender says yes: the log-odds for a borrower with a 700 score, payments at 36% of
+  # income and a fifth down, and what moves it. Lenders deny Black, Hispanic and Asian applicants
+  # somewhat more often than white applicants with the same finances (design decision Q1).
+  approval:
+    source: "Bhutta, Hizmo & Ringo 2022, Federal Reserve FEDS 2022-067: denial gaps after controlling for credit score, debt and automated underwriting (memory)"
+    base: 2.4
+    perScore50: 0.8
+    perDebtPoint: -0.2
+    thinDown: -0.5
+    byGroup: { black: -0.25, hispanic: -0.15, asian: -0.1 }
+  # How often other people take these steps when they are able to, per year, by age: set against
+  # the share of young adults living with their parents (Census CPS 2023: 56% of those 18–24,
+  # 16% of those 25–34) and homeownership by age (Census HVS: 38% under 35, 65% overall).
+  movesOut: [[18, 0.26], [20, 0.36], [23, 0.5], [26, 0.6], [30, 0.55], [40, 0.4]]
+  buys: [[22, 0.08], [26, 0.2], [30, 0.24], [40, 0.18], [55, 0.1], [70, 0.03]]
+  ownsAtStart:
+    source: "Census Housing Vacancy Survey 2023 by age and income (calibrated)"
+    base: -0.9
+    perAgeYear: 0.075
+    perIncomeLog: 1.3
+
+# A latent score in the usual 300–850 range, from the things the real ones count.
+credit:
+  source: "FICO score composition; Experian State of Credit 2023: average score 715 (memory)"
+  floor: 300
+  range: 550
+  weights: { history: 0.30, utilization: 0.30, age: 0.25, marks: 0.15 }
+  # A record of paying on time builds over years: young people with thin files score lower
+  # (Experian: average 680 under 25, 760 over 60).
+  historyMonths: 90
+  missedPayment: 0.25
+  markYears: 7
+  fullAgeYears: 12
+  # A card's limit as a share of yearly income, from the worst score to the best.
+  limitShare: [0.03, 0.35]
+  minimumPayment: 0.03
+  # Points of interest added for every 100 points of score below 760.
+  aprPer100: 4
+  chargeOffMonths: 6
+  # After a written-off debt, foreclosure or eviction, no new credit for this long.
+  closedAfterMarkMonths: 24
+
+studentLoans:
+  source: "Federal Student Aid: standard and income-driven repayment (memory)"
+  graceMonths: 6
+  termMonths: 120
+  # Income-driven repayment: this share of income above the protected amount (a multiple of the poverty line).
+  incomeShare: 0.10
+  protectedIncome: 1.5
+  forgivenAfterMonths: 240
+  # Private loans: the share of students with need still uncovered who take one, and what it costs over the federal rate.
+  privateShare: 0.15
+  privateSpread: 3.5
+
+# The savings and debts of adults who enter the simulation already grown: median net worth by
+# age for a family of median income, how it scales with income, and how it is held.
+wealthAtStart:
+  source: "Federal Reserve, Survey of Consumer Finances 2022: net worth by age of head and by income (memory)"
+  byAge: [[18, 3000], [25, 18000], [32, 60000], [40, 135000], [50, 247000], [60, 365000], [70, 410000]]
+  medianIncome: 84000
+  incomeElasticity: 1.4
+  logSd: 1.1
+  cash: 0.35
+  retirement: 0.45
+
+# Defined-benefit pensions, in the public occupations that still have them.
+pension:
+  source: "Public Plans Data, Center for Retirement Research: typical multiplier (memory)"
+  perYear: 0.018
+  fromAge: 58

@@ -1,8 +1,9 @@
 # Lifesim — Design Document
 
-**Status:** Approved on 2026-11-10 with all twelve proposals in §1 accepted. Milestones 1 and 2 are
-built; see [CALIBRATION.md](CALIBRATION.md) for results so far. One accepted decision is not yet
-implemented: race and ethnicity (Q1), see item 40 in §17.
+**Status:** Approved on 2026-11-10 with all twelve proposals in §1 accepted. Milestones 1, 2 and 3
+are built; see [CALIBRATION.md](CALIBRATION.md) for results so far. Race and ethnicity (Q1) is
+implemented as of Milestone 3 (items 48–49 in §17); its direct effect in policing waits for law
+in Milestone 6.
 **Settings:** United States · born 2026, simulated forward · browser app in TypeScript, no backend · English.
 
 This document describes what is being built and why. Section 1 records the decisions taken at
@@ -196,7 +197,8 @@ src/
     systems/       one file per system: body, mortality, processes, events, decisions, actions,
                    perception and the year summary
     country/       the rules interface, and one folder per country for logic no table can hold
-                   (us/: family formation, stub earnings, the school system)
+                   (us/: family formation, the school system, work, household money and housing,
+                   taxes and benefits)
     state.ts       the game state schema, from which its types and save validation both come
     context.ts     adjustStock and emitFact: the two doors all state changes go through
     engine.ts      createLife, step, tick, replay
@@ -1502,6 +1504,105 @@ Added while building Milestone 2:
     (which arrives with licensing in Milestone 3).
 42. **Save schema version 2.** A version 1 save loads as a person whose family is unknown and
     whose schooling is not on record, and can be played to the end.
+
+Added while building Milestone 3:
+
+43. **The economy is the same whatever the player does.** Every draw in the business cycle,
+    prices, rates and markets is keyed by the month alone, so two lives with the same seed share
+    their recessions, and a paired counterfactual changes nothing but the choice. Real wages and
+    house prices have no long-run trend: a cohort born in 2026 is compared with today's
+    cross-section (§13.1), so a worker of fifty in 2076 earns, in 2026 dollars, what a worker of
+    fifty earns today.
+44. **Nominal dollars, indexed rules** (Q5, Q7). The engine keeps a price level; every dollar figure
+    in the country pack is in start-year dollars and is multiplied by it, so brackets, benefits,
+    tuition and rents rise with prices. The batch tool divides everything by it again. The
+    Money section has a toggle to show 2026 dollars.
+45. **Occupations stand for groups of jobs.** The catalog has 54 lines (Appendix A, plus four
+    rungs of management that open with experience), each with a median wage, a spread, an
+    employment count, a sex ratio, hours, physical demand, stress, sector and the qualification
+    it needs. Within an occupation there are three rungs (junior, established, senior) reached by
+    months and skill; apprenticeships, police and fire academies and residency are a paid
+    trainee rung that ends with the license. Skill in a line of work is a 0–1 stock that grows
+    with months worked and fades when unused toward a floor long practice raises (§7.5).
+46. **Employers are generated when someone is hired** and exist as long as anyone works there.
+    A struggling employer goes from sound to quiet trouble, with warning signs that people who
+    have been there a few months notice, and then either recovers or lays people off and
+    sometimes closes. Most jobs are lost this way, as in life. This is engine logic for now;
+    it becomes a data-defined process when processes can belong to an organization (Milestone 6).
+47. **Getting a job is a monthly draw per application** with the named-factor model of §3.2: the
+    market for that line of work, its sector's trend, experience, a first job, the length of a
+    gap, age over fifty, how one interviews, fit, and the documented hiring gap below. For the
+    player, the record is kept every three months of a search, so "Why?" can say why it is
+    taking so long. An offer is a decision (accept, ask for more, decline); asking for more
+    usually works a little and occasionally loses the offer.
+48. **Race and ethnicity (Q1) is implemented.** Each person belongs to one of five groups, drawn
+    from births. Most of the difference enters through the family: the mother's schooling and
+    marriage by group, and the starting wealth and homeownership of the parents' generation by
+    group, conditional on income. Two documented direct effects act later, each a named factor
+    that "Why?" states in plain words: employers call back Black and Latino applicants less
+    often than equally qualified white applicants (Quillian et al. 2017), and lenders deny
+    mortgages to Black, Hispanic and Asian applicants somewhat more often at the same finances
+    (Bhutta, Hizmo & Ringo 2022). The third, policing, waits for Milestone 6.
+49. **The gender pay gap comes from mechanisms only** (Q2): sorting into occupations by their
+    real sex ratios, hours, and time out of work, which is more common for women and costs
+    skill and rungs. No residual pay modifier was added. The largest mechanism in the
+    literature, the drop in mothers' earnings after a first child (Kleven et al. 2019), arrives
+    with children in Milestone 4, and the gap will be re-measured then.
+50. **A person's standing in pay is fixed for life:** a z-score built from aptitude,
+    conscientiousness, their parents' schooling beyond what it did for their own (Heckman 2006;
+    Chetty et al. 2014), and luck. It sets where in an occupation's spread they are paid.
+51. **Stepping out of work** for a while (caring for someone, illness, a spell at home) is a
+    monthly hazard by sex, lower for someone with nobody else's income behind them. It stands in
+    for caregiving and illness until children (Milestone 4) and health (Milestone 5) produce
+    those spells themselves.
+52. **Money is double entry in whole cents** (§7.14). Each person has accounts by kind (bank,
+    index fund, retirement, home, card, federal and private student loans, mortgage); the rest
+    of the world holds the other side. A couple who live together keep one set of books, held
+    by the one with the smaller id. A test and the invariants check that the balances of all
+    accounts sum to exactly zero.
+53. **Taxes are worked out properly once a year** and approximated each month: withholding by the
+    single-filer schedule and the state's effective rate; in April, the return with filing
+    status, the standard deduction, the child tax credit and the earned income credit, and a
+    refund or a bill. Left out: itemizing, capital gains (investment returns are untaxed), and
+    the taxation of Social Security, which is approximated by a flat share.
+54. **Spending:** bills are paid in order of need (essentials, the home, health cover, childcare,
+    child support, college, debts); what is left is spent at the chosen level; people also spend
+    a few cents a year of each dollar saved (a wealth effect), and retirees draw their
+    retirement accounts down on roughly the required-distribution schedule. A shortfall draws on
+    savings, then the card, then goes unpaid, with marks on the credit file. A written-off card
+    closes, and no lender offers another for two years.
+55. **Health costs are an average** until Milestone 5: a premium by kind of cover (employer,
+    Medicaid, marketplace with the 2025 subsidy schedule, Medicare, with Medicaid paying Medicare
+    costs below 135% of the poverty line, or none) plus typical out-of-pocket spending, and an
+    average cost of care in old age. Whether someone buys cover they can get varies from person
+    to person, and some never enroll.
+56. **Housing:** renting (screened on income, credit and eviction record), owning (underwritten on
+    the down payment, credit score and payments against income, then a lender's decision with
+    the factors above), or a room in someone else's home. Homes come in five tiers within the
+    state. Parents with savings help with a first down payment, and a first-time buyer may borrow
+    from a workplace retirement account. Three months behind on rent is eviction; four on a
+    mortgage is foreclosure. Most people with family to go to move back before it comes to
+    that; for the player, falling behind opens that choice. Someone taken in is never evicted:
+    the floor is a room, not the street. Homelessness, metros and moving between states are
+    left for later.
+57. **Retirement:** Social Security from the real formula on the earnings record, claimed when the
+    player chooses from 62 (others claim when they stop working, at full age if still working,
+    and by 70); pensions in the public occupations that still have them.
+58. **Certificates and graduate school are programs** with a length, a cost (borrowed), a
+    completion rate and the credential they award. Graduate programs admit on college grades.
+    The license an occupation needs comes from its program or its trainee rung.
+59. **Grown children leave home by their own choice,** at rates by age for everyone else and by
+    action for the player. Leaving home needs a job and a landlord's yes.
+60. **AI players act once a year** at the same rates as other people; the batch tool records one
+    survey row per life per birthday, so moments of decision are not oversampled.
+61. **Save schema version 3.** A version 2 save loads with an ordinary economy, working parents in
+    a job that pays what their stand-in did, every household renting, and student loans as a
+    balance with a lender, and can be played on.
+62. **Left for later:** self-employment and small business, gig work, vehicles and commuting,
+    bankruptcy and debt collection as processes, personal and payday loans, disability benefits
+    (SSDI and SSI), unemployment insurance rules beyond each state's weekly cap, metros, and
+    moving between states. Colleagues are names only (a manager); they become people in
+    Milestone 4.
 
 ---
 

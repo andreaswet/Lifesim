@@ -17,7 +17,7 @@ export function App({ client }: { client: GameClient }) {
   const [ready, setReady] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  const [setup, setSetup] = useState<Setup>({ states: [] })
+  const [setup, setSetup] = useState<Setup>({ states: [], groups: [] })
 
   const send = useCallback(
     async (request: Request): Promise<boolean> => {

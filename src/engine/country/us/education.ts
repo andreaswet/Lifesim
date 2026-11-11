@@ -19,7 +19,10 @@ import { ageYears, householdOf, parentsOf, educationRank } from '../../people'
 import { newId, type Decision, type GameState, type OutcomeRecord, type Person, type Scalar } from '../../state'
 import { registerAction, registerHook } from '../../systems/actions'
 import { hasOpenDecision, openDecision, plainText, registerSystemDecision } from '../../systems/decisions'
-import { homeSupport, incomeZ, involvement, parentEducationZ, parentalStructure } from './family'
+import { WORLD, acct, dollars, move } from '../../systems/money'
+import { homeSupport, incomeZ, involvement, parentEducationZ, parentalStructure, realIncome } from './family'
+import { payOut, unitHead } from './household'
+import { workHours } from './work'
 
 type Cfg = EducationDef
 
@@ -90,6 +93,16 @@ function round2(x: number): number {
   return Math.round(x * 100) / 100
 }
 
+/** Start-year dollars as dollars of the day. School prices and aid rise with prices (design decision Q7). */
+function today(ctx: Pick<Ctx, 'state'>, amount: number): number {
+  return Math.round(amount * ctx.state.world.priceLevel)
+}
+
+/** Student debt owed now, in dollars of the day. */
+function owed(ctx: Pick<Ctx, 'state'>, person: Person): number {
+  return Math.round(-dollars(ctx.state, person.id, 'student') - dollars(ctx.state, person.id, 'private'))
+}
+
 // ---------------------------------------------------------------------------------------------
 // Effort and strain
 // ---------------------------------------------------------------------------------------------
@@ -111,7 +124,11 @@ function strainMonth(ctx: Ctx, person: Person): void {
   const study = k12.study.levels.find((l) => l.id === person.policies.study)
   const activity = content.bundle.body.activityLevels[content.activityIndex.get(person.policies.activity) ?? 0]
   const enrolled = person.education.status === 'k12' || person.education.status === 'college'
-  const hours = (enrolled ? (study?.hoursPerWeek ?? 0) : 0) + (activity?.hoursPerWeek ?? 0)
+  // A job on top of school costs little up to about fifteen hours a week and a good deal beyond
+  // (Darolia 2014; Stinebrickner & Stinebrickner 2003); for someone out of school, only the
+  // hours beyond a normal week count.
+  const job = workHours(content, person)
+  const hours = (enrolled ? (study?.hoursPerWeek ?? 0) + Math.max(0, job - k12.load.jobHoursFree) : Math.max(0, job - 40)) + (activity?.hoursPerWeek ?? 0)
   const free = k12.load.freeHours + k12.load.perConscientiousness * (person.traits.conscientiousness ?? 0)
   const target = clamp((hours - free) / k12.load.fullStrainAtExtraHours, 0, 1)
   person.strain = approach(person.strain, target, k12.load.strainRiseMonths, k12.load.strainFallMonths)
@@ -381,7 +398,7 @@ function offerTest(ctx: Ctx, person: Person): void {
     promptId: 'prompt.edu.test',
     promptData: { name: cfg.test.name },
     options: [
-      { id: 'take', label: plainText(ctx, 'label.edu.take_test', person, { name: cfg.test.name }), cost: { money: cfg.test.fee, energy: 'low' } },
+      { id: 'take', label: plainText(ctx, 'label.edu.take_test', person, { name: cfg.test.name }), cost: { money: today(ctx, cfg.test.fee), energy: 'low' } },
       { id: 'skip', label: plainText(ctx, 'label.edu.skip_test', person, { name: cfg.test.name }) },
     ],
     optional: false,
@@ -426,7 +443,7 @@ function offerApplications(ctx: Ctx, person: Person): void {
     deadlineMonths: 2,
     promptId: 'prompt.edu.apply',
     promptData: { gpa: hsGpa(person), hasTest: person.education.test !== null, total: person.education.test ? person.education.test.verbal + person.education.test.math : null },
-    options: cfg.admissions.strategies.map((s) => ({ id: s.id, label: s.label, ...(s.fee > 0 ? { cost: { money: s.fee, energy: s.tiers.length > 2 ? ('high' as const) : ('moderate' as const) } } : {}) })),
+    options: cfg.admissions.strategies.map((s) => ({ id: s.id, label: s.label, ...(s.fee > 0 ? { cost: { money: today(ctx, s.fee), energy: s.tiers.length > 2 ? ('high' as const) : ('moderate' as const) } } : {}) })),
     optional: false,
     sourceClass: 'structural',
   })
@@ -510,17 +527,17 @@ interface Price {
   studentShare: number
 }
 
-/** What a year would cost this family, and who would pay (design §7.12, "Paying"). */
+/** What a year would cost this family, and who would pay (design §7.12, "Paying"). In start-year dollars. */
 export function priceFor(ctx: Ctx, person: Person, tier: TierDef): Price {
   const cfg = cfgOf(ctx.content)
   // Aid is assessed on the parents' income wherever the student lives.
   const homes = new Map<string, number>()
   for (const parent of parentsOf(ctx.state, person)) {
     const home = householdOf(ctx.state, parent)
-    if (home && !parent.died) homes.set(home.id, home.income)
+    if (home && !parent.died) homes.set(home.id, realIncome(ctx, home))
   }
   const own = householdOf(ctx.state, person)
-  const income = homes.size ? [...homes.values()].reduce((a, b) => a + b, 0) : (own?.income ?? 0)
+  const income = homes.size ? [...homes.values()].reduce((a, b) => a + b, 0) : own ? realIncome(ctx, own) : 0
   let band = cfg.incomeBands.findIndex((upper) => income <= upper)
   if (band < 0) band = cfg.incomeBands.length
   const netPrice = tier.netPrice[band]!
@@ -538,11 +555,11 @@ function offerCollegeChoice(ctx: Ctx, person: Person): void {
   for (const application of person.education.applications) {
     if (!application.admitted) continue
     const tier = tierOf(cfg, application.tier)
-    options.push({ id: tier.id, label: plainText(ctx, 'label.edu.enroll', person, { name: application.name, tierLabel: tier.label }), cost: { money: priceFor(ctx, person, tier).studentShare } })
+    options.push({ id: tier.id, label: plainText(ctx, 'label.edu.enroll', person, { name: application.name, tierLabel: tier.label }), cost: { money: today(ctx, priceFor(ctx, person, tier).studentShare) } })
   }
   if (community) {
     const name = institutionName(ctx, person, community)
-    options.push({ id: community.id, label: plainText(ctx, 'label.edu.enroll', person, { name, tierLabel: community.label }), cost: { money: priceFor(ctx, person, community).studentShare } })
+    options.push({ id: community.id, label: plainText(ctx, 'label.edu.enroll', person, { name, tierLabel: community.label }), cost: { money: today(ctx, priceFor(ctx, person, community).studentShare) } })
   }
   options.push({ id: 'none', label: plainText(ctx, 'label.edu.no_college', person) })
   openDecision(ctx, {
@@ -570,7 +587,7 @@ registerSystemDecision('edu.choose', {
     const name = subject.education.applications.find((a) => a.tier === optionId)?.name ?? institutionName(ctx, subject, tier)
     subject.education.plan = { tier: tier.id, name }
     const price = priceFor(ctx, subject, tier)
-    tell(ctx, subject, 'college_chosen', { which: tier.id, name, tierLabel: tier.label, netPrice: price.netPrice, parentsPay: price.parentsPay, yours: price.studentShare, lapsed }, { significant: true, source: 'player' })
+    tell(ctx, subject, 'college_chosen', { which: tier.id, name, tierLabel: tier.label, netPrice: today(ctx, price.netPrice), parentsPay: today(ctx, price.parentsPay), yours: today(ctx, price.studentShare), lapsed }, { significant: true, source: 'player' })
   },
   weights(state, content, decision, subject) {
     const cfg = cfgOf(content)
@@ -601,7 +618,7 @@ function admissionsRound(ctx: Ctx, person: Person): void {
 /** Whether someone out of school could start, or go back to, college. */
 function couldEnroll(person: Person): boolean {
   const edu = person.education
-  return edu.status === 'out' && edu.plan === null && (edu.level === 'high_school' || edu.level === 'some_college' || edu.level === 'associate')
+  return edu.status === 'out' && edu.plan === null && edu.program === null && (edu.level === 'high_school' || edu.level === 'some_college' || edu.level === 'associate')
 }
 
 function planCommunityCollege(ctx: Ctx, person: Person): void {
@@ -611,7 +628,7 @@ function planCommunityCollege(ctx: Ctx, person: Person): void {
   const name = institutionName(ctx, person, tier)
   const price = priceFor(ctx, person, tier)
   person.education.plan = { tier: tier.id, name }
-  tell(ctx, person, 'college_chosen', { which: tier.id, name, tierLabel: tier.label, netPrice: price.netPrice, parentsPay: price.parentsPay, yours: price.studentShare, lapsed: false }, { significant: true, source: 'player' })
+  tell(ctx, person, 'college_chosen', { which: tier.id, name, tierLabel: tier.label, netPrice: today(ctx, price.netPrice), parentsPay: today(ctx, price.parentsPay), yours: today(ctx, price.studentShare), lapsed: false }, { significant: true, source: 'player' })
 }
 
 /** Starts a fresh round of applications for someone who is no longer at school. */
@@ -635,7 +652,7 @@ registerAction('edu.enroll_community', {
     const ctx = reader(state, content)
     const tier = cfgOf(content).tiers.find((t) => t.open)
     if (!tier) return null
-    return { label: plainText(ctx, 'label.act.enroll_community', person, { name: institutionName(ctx, person, tier) }), section: 'school', costs: [`about $${priceFor(ctx, person, tier).studentShare.toLocaleString('en-US')} a year`] }
+    return { label: plainText(ctx, 'label.act.enroll_community', person, { name: institutionName(ctx, person, tier) }), section: 'school', costs: [`about $${today(ctx, priceFor(ctx, person, tier).studentShare).toLocaleString('en-US')} a year`] }
   },
   perform(ctx, person) {
     planCommunityCollege(ctx, person)
@@ -683,7 +700,23 @@ function billYear(ctx: Ctx, person: Person): void {
   // With real need left over, the student works more hours and studies fewer of them.
   c.partTime = c.unmetNeed > 4000
   person.education.loans += loan
-  if (loan > 0) tell(ctx, person, 'loan_signed', { amount: loan, total: person.education.loans, year: year + 1 }, { source: 'structural' })
+  // The money moves: the loan goes straight to the college, and the parents pay their part.
+  const { state } = ctx
+  move(state, acct(person.id, 'student'), WORLD.colleges, today(ctx, loan))
+  const parents = parentsOf(state, person).filter((p) => !p.died)
+  const payers = [...new Set(parents.map((p) => unitHead(state, p).id))]
+  for (const id of payers) payOut(ctx, state.people[id]!, today(ctx, price.parentsPay) / payers.length, WORLD.colleges)
+  // With need still uncovered, some students sign for a private loan as well, at a higher rate.
+  const P = ctx.content.bundle.country.money.studentLoans
+  let privateLoan = 0
+  if (c.unmetNeed > 2000 && stable(state).chance(P.privateShare, 'edu.private', person.id)) {
+    privateLoan = Math.round(c.unmetNeed / 100) * 100
+    person.education.loans += privateLoan
+    move(state, acct(person.id, 'private'), WORLD.colleges, today(ctx, privateLoan))
+  }
+  // What neither parents nor loans cover comes out of the student's own pocket, from work if they have it.
+  person.flags['edu.ownShare'] = Math.max(0, price.studentShare - loan - privateLoan)
+  if (loan + privateLoan > 0) tell(ctx, person, 'loan_signed', { amount: today(ctx, loan + privateLoan), total: owed(ctx, person), year: year + 1, private: privateLoan > 0 }, { source: 'structural' })
 }
 
 function startCollege(ctx: Ctx, person: Person, credits = 0): void {
@@ -711,7 +744,7 @@ function startCollege(ctx: Ctx, person: Person, credits = 0): void {
   }
   billYear(ctx, person)
   const c = person.education.college
-  tell(ctx, person, 'college_started', { which: transferring ? 'transfer' : tier.id, name: c.name, tierLabel: tier.label, netPrice: c.netPrice, parentsPay: c.parentsPay, unmet: c.unmetNeed, partTime: c.partTime }, { significant: true, source: 'player' })
+  tell(ctx, person, 'college_started', { which: transferring ? 'transfer' : tier.id, name: c.name, tierLabel: tier.label, netPrice: today(ctx, c.netPrice), parentsPay: today(ctx, c.parentsPay), unmet: today(ctx, c.unmetNeed), partTime: c.partTime }, { significant: true, source: 'player' })
   if (!transferring) {
     openDecision(ctx, {
       source: 'system:edu.major',
@@ -776,8 +809,9 @@ function leaveCollege(ctx: Ctx, person: Person, how: 'left' | 'dismissed' | 'fin
   if (how !== 'finished' && educationRank(edu.level) < educationRank('some_college')) edu.level = 'some_college'
   edu.status = 'out'
   person.flags['edu.major'] = c.major
-  if (how !== 'finished') tell(ctx, person, 'college_left', { which: how, name: c.name, credits: Math.round(c.credits), loans: edu.loans }, { significant: true, source: 'player' })
+  if (how !== 'finished') tell(ctx, person, 'college_left', { which: how, name: c.name, credits: Math.round(c.credits), loans: owed(ctx, person) }, { significant: true, source: 'player' })
   edu.college = null
+  person.flags['edu.ownShare'] = 0
 }
 
 function offerTransfer(ctx: Ctx, person: Person, finished: boolean): void {
@@ -789,7 +823,7 @@ function offerTransfer(ctx: Ctx, person: Person, finished: boolean): void {
     // The college record stands in for the high-school one: a transfer applicant with a 3.3 is
     // about as likely to get in as a school-leaver at the bar.
     if ((gpa - 2.6) / 0.6 < tier.bar) continue
-    options.push({ id: tier.id, label: plainText(ctx, 'label.edu.transfer', person, { name: institutionName(ctx, person, tier), tierLabel: tier.label }), cost: { money: priceFor(ctx, person, tier).studentShare } })
+    options.push({ id: tier.id, label: plainText(ctx, 'label.edu.transfer', person, { name: institutionName(ctx, person, tier), tierLabel: tier.label }), cost: { money: today(ctx, priceFor(ctx, person, tier).studentShare) } })
   }
   if (options.length === 0) return
   options.push({ id: 'stay', label: plainText(ctx, finished ? 'label.edu.stop_here' : 'label.edu.stay_here', person) })
@@ -839,11 +873,16 @@ function awardDegree(ctx: Ctx, person: Person): void {
   const tier = tierOf(cfg, c.tier)
   const major = cfg.majors.find((m) => m.id === c.major)
   person.education.level = tier.credential
+  person.flags['edu.major'] = c.major
+  person.flags['edu.collegeGpa'] = cumulativeGpa(person)
+  // Some degrees carry a license with them.
+  const carried = tier.credential === 'bachelor' ? ctx.content.bundle.country.labor.degreeCredentials[c.major] : undefined
+  if (carried && !person.credentials.includes(carried)) person.credentials.push(carried)
   tell(
     ctx,
     person,
     'degree_earned',
-    { which: tier.credential, name: c.name, major: major?.label ?? '', gpa: cumulativeGpa(person), years: round2((ctx.state.now - c.started) / 12), loans: person.education.loans },
+    { which: tier.credential, name: c.name, major: major?.label ?? '', gpa: cumulativeGpa(person), years: round2((ctx.state.now - c.started) / 12), loans: owed(ctx, person) },
     { significant: true, source: 'player' },
   )
 }
@@ -997,6 +1036,122 @@ export function sitEquivalency(ctx: Ctx, person: Person): void {
 // The month
 // ---------------------------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------------------------
+// Certificates and graduate school
+// ---------------------------------------------------------------------------------------------
+
+type Program = Prepared['bundle']['country']['labor']['programs'][number]
+
+function programsOpenTo(content: Prepared, person: Person): Program[] {
+  const edu = person.education
+  if (edu.status !== 'out' || edu.program !== null || edu.plan !== null) return []
+  return content.bundle.country.labor.programs.filter(
+    (p) => educationRank(edu.level) >= educationRank(p.needs) && !person.credentials.includes(p.credential) && (!p.majors || p.majors.includes(String(person.flags['edu.major'] ?? ''))) && !(p.kind === 'graduate' && edu.level === 'graduate'),
+  )
+}
+
+/** Applies to a program. Certificates take anyone with the schooling; graduate programs judge the college record. */
+function enterProgram(ctx: Ctx, person: Person, program: Program): void {
+  const { state } = ctx
+  if (program.kind === 'graduate' && program.bar !== undefined) {
+    const gpa = typeof person.flags['edu.collegeGpa'] === 'number' ? (person.flags['edu.collegeGpa'] as number) : 3.0
+    const contribution = 3.2 * (gpa - program.bar)
+    const probability = logistic(contribution)
+    const admitted = ctx.rng.chance(probability, 'edu.program', person.id, program.id, state.now)
+    const outcome: OutcomeRecord = {
+      id: newId(state, 'out'),
+      month: state.now,
+      kind: 'program_admission',
+      subjectId: person.id,
+      model: 'logit',
+      base: 0.5,
+      baseSource: program.source,
+      factors: Math.abs(contribution) >= 0.05 ? [{ id: 'adm_college_record', contribution }] : [],
+      probability,
+      context: { label: program.label, admitted },
+    }
+    if (person.id === state.playerId) state.outcomes[outcome.id] = outcome
+    if (!admitted) {
+      tell(ctx, person, 'program_denied', { label: program.label }, { significant: true, source: 'player', ...(person.id === state.playerId ? { outcomeId: outcome.id } : {}) })
+      return
+    }
+  }
+  person.education.program = { id: program.id, started: state.now, ends: state.now + program.months }
+  tell(ctx, person, 'program_started', { label: program.label, which: program.kind, months: program.months, cost: today(ctx, program.cost) }, { significant: true, source: 'player' })
+}
+
+function programMonth(ctx: Ctx, person: Person): void {
+  const { state, content } = ctx
+  const L = content.bundle.country.labor
+  const edu = person.education
+  const current = edu.program
+  if (current) {
+    const program = L.programs.find((p) => p.id === current.id)
+    if (!program) {
+      edu.program = null
+      return
+    }
+    // Tuition is borrowed as it falls due.
+    if (program.cost > 0) {
+      edu.loans += program.cost / 12
+      move(state, acct(person.id, 'student'), WORLD.colleges, (program.cost * state.world.priceLevel) / 12)
+    }
+    if (state.now < current.ends) return
+    edu.program = null
+    const passed = ctx.rng.chance(program.completes, 'edu.program.finish', person.id, program.id)
+    if (passed) {
+      person.credentials.push(program.credential)
+      if (program.kind === 'graduate') edu.level = 'graduate'
+    }
+    tell(ctx, person, 'program_finished', { which: passed ? 'completed' : 'failed', label: program.label, kind: program.kind, loans: owed(ctx, person) }, { significant: true, source: 'player' })
+    return
+  }
+  // Other people decide each August whether to start one; the player uses the action.
+  if (person.id === state.playerId || calendarMonth(ctx) !== 8) return
+  const chance = programChance(state, content, person)
+  if (!ctx.rng.chance(chance.certificate + chance.graduate, 'edu.program.enter', person.id, state.now)) return
+  const program = pickProgram(ctx, person, ctx.rng.chance(chance.graduate / Math.max(1e-9, chance.certificate + chance.graduate), 'edu.program.kind', person.id, state.now) ? 'graduate' : 'certificate')
+  if (program) enterProgram(ctx, person, program)
+}
+
+function pickProgram(ctx: Ctx, person: Person, kind: Program['kind']): Program | null {
+  const open = programsOpenTo(ctx.content, person).filter((p) => p.kind === kind)
+  const index = ctx.rng.weighted(open.map((p) => p.weight), 'edu.program.pick', person.id, ctx.state.now)
+  return index < 0 ? null : open[index]!
+}
+
+/** Yearly chance that someone who could start a certificate or a graduate program does. Also for AI players. */
+export function programChance(state: GameState, content: Prepared, person: Person): { certificate: number; graduate: number } {
+  const E = content.bundle.country.labor.programEntry
+  const age = ageYears(person, state.now)
+  const open = programsOpenTo(content, person)
+  if (age < 18 || age >= E.untilAge || open.length === 0) return { certificate: 0, graduate: 0 }
+  const degree = educationRank(person.education.level) >= educationRank('bachelor')
+  return {
+    // Certificates draw people without a degree; a graduate program, those whose record would get them in.
+    certificate: open.some((p) => p.kind === 'certificate') && (!degree || open.some((p) => p.id === 'teaching')) ? E.certificatePerYear * (degree ? 0.4 : 1) : 0,
+    graduate: open.some((p) => p.kind === 'graduate') ? E.graduatePerYear * dexp(0.6 * ((typeof person.flags['edu.collegeGpa'] === 'number' ? (person.flags['edu.collegeGpa'] as number) : 3) - 3.2)) : 0,
+  }
+}
+
+registerAction('edu.program', {
+  available(state, content, person) {
+    const open = programsOpenTo(content, person)
+    if (open.length === 0 || ageYears(person, state.now) < 17) return null
+    const ctx = reader(state, content)
+    return {
+      label: plainText(ctx, 'label.act.program', person),
+      section: 'school',
+      costs: ['tuition is borrowed'],
+      choices: open.map((p) => ({ id: p.id, label: plainText(ctx, 'label.edu.program_option', person, { label: p.label, months: p.months, cost: today(ctx, p.cost), which: p.kind }) })),
+    }
+  },
+  perform(ctx, person, choice) {
+    const program = programsOpenTo(ctx.content, person).find((p) => p.id === choice)
+    if (program) enterProgram(ctx, person, program)
+  },
+})
+
 /** One month of schooling for one person, whatever stage they are at. */
 export function educationMonth(ctx: Ctx, person: Person): void {
   const { state, content } = ctx
@@ -1074,6 +1229,7 @@ export function educationMonth(ctx: Ctx, person: Person): void {
   }
 
   if (edu.status === 'out') {
+    programMonth(ctx, person)
     if (month === cfg.admissions.month) admissionsRound(ctx, person)
     // Other people decide each August whether this is the year they go; the player uses the
     // actions above.
@@ -1153,13 +1309,14 @@ export function backfillSchooling(ctx: Ctx, person: Person): void {
  * accord. Other people act on these chances month by month and term by term; AI players, who
  * act once a year, use this so that they behave as other people do.
  */
-export function leavingChances(state: GameState, content: Prepared, person: Person): { school: number; college: number; equivalency: number; enroll: number; enrollAtCommunity: number } {
+export function leavingChances(state: GameState, content: Prepared, person: Person): { school: number; college: number; equivalency: number; enroll: number; enrollAtCommunity: number; certificate: number; graduate: number } {
   const school = 1 - dpow(1 - dropoutChance(state, content, person), 12)
   const college = person.education.college ? 1 - dpow(1 - collegeLeaving(reader(state, content), person).probability, 2) : 0
   const eq = cfgOf(content).k12.equivalency
   const age = ageYears(person, state.now)
+  const programs = programChance(state, content, person)
   const equivalency = person.education.status === 'left_k12' && age >= 17 && age < eq.untilAge ? 1 - dpow(1 - eq.perMonth, 12) : 0
-  return { school, college, equivalency, enroll: lateEntryChance(reader(state, content), person), enrollAtCommunity: cfgOf(content).college.lateEntry.communityShare }
+  return { school, college, equivalency, enroll: lateEntryChance(reader(state, content), person), enrollAtCommunity: cfgOf(content).college.lateEntry.communityShare, certificate: programs.certificate, graduate: programs.graduate }
 }
 
 export function gradeName(grade: number): string {

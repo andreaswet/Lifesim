@@ -9,13 +9,15 @@
  */
 
 import { EDU_LEVELS, type EduLevel } from '../../content/country-schema'
-import { clamp, dexp, dlog, dpow } from '../../core/dmath'
+import { clamp, dexp, dlog, dpow, logistic, logit } from '../../core/dmath'
 import { monthOf } from '../../core/time'
 import { emitFact, type Ctx } from '../../context'
 import { ageYears, blankEducation, childrenOf, educationRank, educationZ, householdOf, joinHousehold, leaveHousehold, parentsAtHome, parentsOf, relationOf } from '../../people'
 import { livingPeople, newId, player, type Household, type Person, type StartOptions } from '../../state'
-import { currentIncome, initialWork, workMonth } from './earnings'
 import { backfillSchooling } from './education'
+import { defaultMoneyPolicies, divideMoney, marketRent, newHousehold, povertyLine, settleEstate, settleHousehold } from './household'
+import { tellPlayer } from './news'
+import { currentIncome, settleFounder, stopWork } from './work'
 import { childGenes, founderGenes, realizeAptitudes, realizeTraits } from './genetics'
 
 const ADULT = 18
@@ -23,14 +25,16 @@ const ADULT = 18
 /** The parts of a context that reading family circumstances needs. */
 type Reader = Pick<Ctx, 'state' | 'content'>
 
-export function povertyLine(ctx: Reader, size: number): number {
-  const p = ctx.content.bundle.country.family.poverty
-  return p.base + p.perAdditional * Math.max(0, size - 1)
+export { povertyLine }
+
+/** A household's yearly income in start-year dollars. */
+export function realIncome(ctx: Reader, household: Household): number {
+  return household.income / ctx.state.world.priceLevel
 }
 
 /** Household income against its needs, as a z-score: 0 is about three times the poverty line. */
 export function incomeZ(ctx: Reader, household: Household): number {
-  const ratio = Math.max(household.income, 4000) / povertyLine(ctx, Math.max(1, household.members.length))
+  const ratio = Math.max(realIncome(ctx, household), 4000) / povertyLine(ctx, Math.max(1, household.members.length))
   return clamp((dlog(ratio) - 1.1) / 0.75, -2.5, 2.5)
 }
 
@@ -42,8 +46,8 @@ function involvementOf(ctx: Reader, parent: Person): number {
     w.education * educationZ(parent.education.level) +
     w.conscientiousness * (parent.traits.conscientiousness ?? 0) +
     w.agreeableness * (parent.traits.agreeableness ?? 0) +
-    (work && work.hours === 'full' && work.employed ? w.fullTimeWork : 0) +
-    (work && work.hours !== 'none' && !work.employed ? w.unemployed : 0)
+    (work?.job && work.job.hoursPerWeek >= 30 ? w.fullTimeWork : 0) +
+    (work?.status === 'unemployed' ? w.unemployed : 0)
   )
 }
 
@@ -80,7 +84,7 @@ export function parentEducationZ(ctx: Reader, person: Person): number {
 
 export function recomputeIncome(ctx: Ctx, household: Household): void {
   const { state } = ctx
-  const support = ctx.content.bundle.country.earnings.childSupport
+  const support = ctx.content.bundle.country.labor.childSupport
   let income = 0
   for (const id of household.members) {
     const member = state.people[id]
@@ -126,7 +130,12 @@ function settledBody(ctx: Ctx, bornMonth: number, activity: string): Person['bod
   return { cardio: content.envelope('cardio', age) * (level.sustains.cardio ?? 0), strength: content.envelope('strength', age) * (level.sustains.strength ?? 0) }
 }
 
-function makeAdult(ctx: Ctx, init: { first: string; family: string; sex: 'male' | 'female'; ageYears: number; education: EduLevel }): Person {
+function defaultPolicies(ctx: Ctx, activity: string): Person['policies'] {
+  const c = ctx.content.bundle.country
+  return { activity, study: c.education.k12.study.default, effort: c.labor.performance.default, search: 'none', lifestyle: c.money.living.default, saving: c.money.saving.default }
+}
+
+function makeAdult(ctx: Ctx, init: { first: string; family: string; sex: 'male' | 'female'; ethnicity: string; ageYears: number; education: EduLevel }): Person {
   const { state, content, rng } = ctx
   const id = newId(state, 'p')
   const cfg = content.bundle.country.family.inheritance
@@ -136,6 +145,7 @@ function makeAdult(ctx: Ctx, init: { first: string; family: string; sex: 'male' 
     id,
     name: { first: init.first, family: init.family },
     sex: init.sex,
+    ethnicity: init.ethnicity,
     born,
     birthDay: rng.range(1, 28, 'family.birthDay', id),
     motherId: null,
@@ -149,9 +159,11 @@ function makeAdult(ctx: Ctx, init: { first: string; family: string; sex: 'male' 
     skills: {},
     body: settledBody(ctx, born, 'light'),
     strain: 0,
-    policies: { activity: 'light', study: content.bundle.country.education.k12.study.default },
+    policies: defaultPolicies(ctx, 'light'),
     education: blankEducation('not_modeled', init.education),
+    credentials: [],
     work: null,
+    money: null,
     nextBirth: null,
     flags: {},
     eventHistory: {},
@@ -169,6 +181,8 @@ function makeChild(ctx: Ctx, init: { id?: string; first: string; family: string;
     id,
     name: { first: init.first, family: init.family },
     sex: init.sex,
+    // A child of parents from different groups is counted in the last group.
+    ethnicity: init.mother.ethnicity === init.father.ethnicity ? init.mother.ethnicity : content.bundle.country.people.groups[content.bundle.country.people.groups.length - 1]!.id,
     born: init.born,
     birthDay: init.birthDay ?? rng.range(1, 28, 'family.birthDay', id),
     motherId: init.mother.id,
@@ -181,9 +195,11 @@ function makeChild(ctx: Ctx, init: { id?: string; first: string; family: string;
     skills: {},
     body: newborn ? { cardio: body.stocks.cardio!.atBirth, strength: body.stocks.strength!.atBirth } : settledBody(ctx, init.born, body.defaultActivity),
     strain: 0,
-    policies: { activity: body.defaultActivity, study: content.bundle.country.education.k12.study.default },
+    policies: defaultPolicies(ctx, body.defaultActivity),
     education: blankEducation('not_yet', 'less_than_hs'),
+    credentials: [],
     work: null,
+    money: null,
     nextBirth: null,
     flags: {},
     eventHistory: {},
@@ -206,29 +222,6 @@ function planNextBirth(ctx: Ctx, mother: Person): void {
   if ((due - mother.born) / 12 <= cfg.maxMotherAge) mother.nextBirth = due
 }
 
-function newHousehold(ctx: Ctx, state: string, neighborhood: number, key: string): Household {
-  const { content, rng } = ctx
-  const names = content.bundle.country.schools
-  const cfg = content.bundle.country.family.neighborhood
-  const household: Household = {
-    id: newId(ctx.state, 'h'),
-    members: [],
-    state,
-    neighborhood,
-    income: 0,
-    disruption: 0,
-    collegeWillingness: 1,
-    schools: {
-      elementary: rng.pick(names.elementary, 'family.school', key, 'elementary'),
-      middle: rng.pick(names.middle, 'family.school', key, 'middle'),
-      high: rng.pick(names.high, 'family.school', key, 'high'),
-      quality: (neighborhood - 3) * cfg.schoolQualityPerTier + cfg.schoolQualityNoise * rng.normal('family.school', key, 'quality'),
-    },
-  }
-  ctx.state.households[household.id] = household
-  return household
-}
-
 /**
  * Builds the family the player is born into and returns the player, already placed in it.
  * Called once, with `state.now` at the month of birth.
@@ -240,8 +233,16 @@ export function createFamily(ctx: Ctx, start: StartOptions, self: { sex: 'male' 
 
   const stateId = start.state && country.states.some((s) => s.id === start.state) ? start.state : country.states[Math.max(0, rng.weighted(country.states.map((s) => s.population), 'family.state'))]!.id
 
-  // Mother: schooling, then age given schooling.
-  const motherEducation = weightedKey(ctx, cfg.motherEducation.shares, 'motherEducation')
+  // Who the parents are (design decision Q1). The player may have asked; otherwise it follows US births.
+  const groups = country.people.groups
+  const lastGroup = groups[groups.length - 1]!
+  const asked = groups.find((g) => g.id === start.ethnicity)
+  const group = asked ?? groups[Math.max(0, rng.weighted(groups.map((g) => g.share), 'family.group'))]!
+  const sameGroup = (asked !== undefined && asked.id !== lastGroup.id) || rng.chance(country.people.sameGroup, 'family.sameGroup')
+  const fatherGroup = sameGroup ? group : (groups.filter((g) => g.id !== group.id)[Math.max(0, rng.weighted(groups.filter((g) => g.id !== group.id).map((g) => g.share), 'family.fatherGroup'))] ?? group)
+
+  // Mother: schooling given her group, then age given schooling.
+  const motherEducation = weightedKey(ctx, group.motherEducation, 'motherEducation')
   const ageCfg = cfg.motherAge.byEducation[motherEducation]
   let motherAge = Math.round(ageCfg.mean)
   for (let i = 0; i < 30; i++) {
@@ -253,7 +254,7 @@ export function createFamily(ctx: Ctx, start: StartOptions, self: { sex: 'male' 
   }
 
   // Partnership at the birth.
-  const unmarried = rng.chance(cfg.partnership.unmarriedByEducation[motherEducation], 'family.unmarried')
+  const unmarried = rng.chance(logistic(logit(cfg.partnership.unmarriedByEducation[motherEducation]) + group.unmarried), 'family.unmarried')
   const status: 'married' | 'cohabiting' | 'apart' = !unmarried ? 'married' : rng.chance(cfg.partnership.cohabitingShareOfUnmarried, 'family.cohabiting') ? 'cohabiting' : 'apart'
 
   // Older brothers and sisters: as many as the birth order says and the mother's age allows.
@@ -274,7 +275,7 @@ export function createFamily(ctx: Ctx, start: StartOptions, self: { sex: 'male' 
   let fatherEducation: EduLevel = motherEducation
   const u = rng.float('family.fatherEducation')
   if (u >= cfg.father.sameEducation + cfg.father.adjacentEducation) {
-    fatherEducation = weightedKey(ctx, cfg.motherEducation.shares, 'fatherEducation')
+    fatherEducation = weightedKey(ctx, fatherGroup.motherEducation, 'fatherEducation')
   } else if (u >= cfg.father.sameEducation) {
     const rank = educationRank(motherEducation) + (rng.chance(0.5, 'family.fatherEducationStep') ? 1 : -1)
     fatherEducation = EDU_LEVELS[clamp(rank, 0, EDU_LEVELS.length - 1)]!
@@ -290,14 +291,19 @@ export function createFamily(ctx: Ctx, start: StartOptions, self: { sex: 'male' 
   const motherFamily = status === 'married' ? fatherFamily : start.familyName?.trim() && status === 'apart' ? start.familyName.trim() : rng.pick(country.names.family, 'family.familyName', 'mother')
   const childFamily = status === 'apart' ? motherFamily : fatherFamily
 
-  const mother = makeAdult(ctx, { first: pickName(ctx, country.names.female, taken, 'mother'), family: motherFamily, sex: 'female', ageYears: motherAge, education: motherEducation })
-  const father = makeAdult(ctx, { first: pickName(ctx, country.names.male, taken, 'father'), family: fatherFamily, sex: 'male', ageYears: fatherAge, education: fatherEducation })
+  const mother = makeAdult(ctx, { first: pickName(ctx, country.names.female, taken, 'mother'), family: motherFamily, sex: 'female', ethnicity: group.id, ageYears: motherAge, education: motherEducation })
+  const father = makeAdult(ctx, { first: pickName(ctx, country.names.male, taken, 'father'), family: fatherFamily, sex: 'male', ethnicity: fatherGroup.id, ageYears: fatherAge, education: fatherEducation })
   state.people[mother.id] = mother
   state.people[father.id] = father
-  mother.work = initialWork(ctx, mother, 'mother')
-  father.work = initialWork(ctx, father, 'father')
-  father.flags.paysSupport = rng.chance(country.earnings.childSupport.paysAtAll, 'family.paysSupport', father.id)
-  mother.flags.paysSupport = rng.chance(country.earnings.childSupport.paysAtAll, 'family.paysSupport', mother.id)
+  father.flags.paysSupport = rng.chance(country.labor.childSupport.paysAtAll, 'family.paysSupport', father.id)
+  mother.flags.paysSupport = rng.chance(country.labor.childSupport.paysAtAll, 'family.paysSupport', mother.id)
+  // They live somewhere before anything else is known; the neighborhood is settled once their work is.
+  const home = newHousehold(ctx, stateId, 3, 'home')
+  const fatherHome = status === 'apart' ? newHousehold(ctx, stateId, 3, 'father') : home
+  joinHousehold(state, mother, home)
+  joinHousehold(state, father, fatherHome)
+  settleFounder(ctx, mother, 'mother')
+  settleFounder(ctx, father, 'father')
 
   const me = makeChild(ctx, {
     id: 'p1',
@@ -319,23 +325,28 @@ export function createFamily(ctx: Ctx, start: StartOptions, self: { sex: 'male' 
   })
 
   // The neighborhood follows the family's income loosely; schools follow the neighborhood.
-  const provisional = (dlog(Math.max(8000, currentIncome(ctx, mother) + (status === 'apart' ? 0 : currentIncome(ctx, father))) / povertyLine(ctx, 3 + order)) - 1.1) / 0.75
+  const provisional = (dlog(Math.max(8000, (currentIncome(ctx, mother) + (status === 'apart' ? 0 : currentIncome(ctx, father))) / state.world.priceLevel) / povertyLine(ctx, 3 + order)) - 1.1) / 0.75
   const w = cfg.neighborhood.incomeWeight
   const latent = w * clamp(provisional, -2.5, 2.5) + Math.sqrt(1 - w * w) * rng.normal('family.neighborhood')
   const tier = latent < -0.84 ? 1 : latent < -0.25 ? 2 : latent < 0.25 ? 3 : latent < 0.84 ? 4 : 5
 
-  const home = newHousehold(ctx, stateId, tier, 'home')
-  joinHousehold(state, mother, home)
+  const place = (household: Household, to: number): void => {
+    household.neighborhood = to
+    household.schools.quality += (to - 3) * cfg.neighborhood.schoolQualityPerTier
+  }
+  place(home, tier)
   for (const child of [...older, me]) joinHousehold(state, child, home)
   if (status === 'apart') {
-    joinHousehold(state, father, newHousehold(ctx, stateId, Math.max(1, tier - 1), 'father'))
+    place(fatherHome, Math.max(1, tier - 1))
   } else {
-    joinHousehold(state, father, home)
     const since = state.now - Math.min(motherAge - 16, order > 0 ? Math.round(olderAges[order - 1]! / 12) + 1 : 2) * 12
     mother.partner = { id: father.id, status, since }
     father.partner = { id: mother.id, status, since }
   }
   for (const h of Object.values(state.households)) recomputeIncome(ctx, h)
+  settleHousehold(ctx, home, status === 'apart' ? [mother] : [mother, father])
+  if (status === 'apart') settleHousehold(ctx, fatherHome, [father])
+  for (const parent of [mother, father]) parent.flags['money.set'] = true
 
   const willing = country.education.paying.parents
   home.collegeWillingness = dexp(willing.willingnessSd * rng.normal('family.willingness')) * (1 + willing.willingnessPerEducationStep * ((educationRank(motherEducation) + educationRank(fatherEducation)) / 2 - 2))
@@ -344,15 +355,6 @@ export function createFamily(ctx: Ctx, start: StartOptions, self: { sex: 'male' 
   for (const sibling of older) backfillSchooling(ctx, sibling)
   planNextBirth(ctx, mother)
   return me
-}
-
-/** Tells the player about something that happened to someone in their family. */
-function tellPlayer(ctx: Ctx, kind: string, who: Person, data: Record<string, string | number | boolean | null> = {}, significant = true): void {
-  const self = player(ctx.state)
-  if (self.died || who.id === self.id) return
-  const relation = relationOf(self, who)
-  if (relation === 'other') return
-  emitFact(ctx, { kind, subject: self, data: { who: who.id, relation, ...data }, significant }, { sourceClass: 'npc' })
 }
 
 function separate(ctx: Ctx, a: Person, b: Person): void {
@@ -370,6 +372,8 @@ function separate(ctx: Ctx, a: Person, b: Person): void {
   father.partner = null
   const away = newHousehold(ctx, home.state, Math.max(1, home.neighborhood - 1), `${leaves.id}:${state.now}`)
   joinHousehold(state, leaves, away)
+  divideMoney(ctx, mother, father, stays)
+  away.housing = { tenure: 'rent', shared: false, payer: leaves.id, rent: marketRent(ctx, away.state, away.neighborhood, 1, false), rentSet: state.now, arrears: 0, mortgage: null }
   // Grown children who still live at home stay where they are.
   home.disruption += 0.6
   if (mother.nextBirth !== null && !rng.chance(cfg.furtherBirth.afterSeparation, 'family.keepPlan', mother.id, state.now)) mother.nextBirth = null
@@ -416,6 +420,8 @@ function birth(ctx: Ctx, mother: Person): void {
 export function familyAfterDeath(ctx: Ctx, dead: Person): void {
   const { state } = ctx
   const home = householdOf(state, dead)
+  const inherited = settleEstate(ctx, dead)
+  stopWork(ctx, dead)
   if (dead.partner) {
     const partner = state.people[dead.partner.id]
     if (partner) partner.partner = null
@@ -436,6 +442,7 @@ export function familyAfterDeath(ctx: Ctx, dead: Person): void {
     recomputeIncome(ctx, home)
   }
   if (dead.id !== state.playerId) tellPlayer(ctx, 'family_death', dead, { age: ageYears(dead, state.now) })
+  if (inherited > 0) tellPlayer(ctx, 'inheritance', dead, { amount: inherited })
 }
 
 /** One month of family life for everyone: work, partnerships, births, and money. */
@@ -444,16 +451,11 @@ export function familyMonth(ctx: Ctx): void {
   const cfg = content.bundle.country.family
   const self = player(state)
 
+  // Spending and saving become a person's own at eighteen, and start out in character.
   for (const person of livingPeople(state)) {
-    const change = workMonth(ctx, person)
-    if (!change) continue
-    const home = householdOf(state, person)
-    if (home && change === 'lost') home.disruption += 0.25
-    // A parent's job is news to a child who lives with them, and to a grown child less so.
-    if (person.id !== self.id && person.householdId !== null && person.householdId === self.householdId) {
-      // It marks a year for a child at home; for a grown child it is news, not the event of the year.
-      tellPlayer(ctx, change === 'lost' ? 'parent_job_lost' : 'parent_job_found', person, { months: 0 }, change === 'lost' && ageYears(self, state.now) < ADULT)
-    }
+    if (person.flags['money.set'] === true || ageYears(person, state.now) < ADULT) continue
+    person.flags['money.set'] = true
+    defaultMoneyPolicies(ctx, person)
   }
 
   for (const person of livingPeople(state)) {
@@ -464,7 +466,7 @@ export function familyMonth(ctx: Ctx): void {
     if (!other || other.died) continue
     const mother = person.sex === 'female' ? person : other
     let perYear = cfg.separation.perYear[link.status]
-    if ([person, other].some((p) => p.work && p.work.hours !== 'none' && !p.work.employed)) perYear *= cfg.separation.eitherParentUnemployed
+    if ([person, other].some((p) => p.work?.status === 'unemployed')) perYear *= cfg.separation.eitherParentUnemployed
     const first = childrenOf(state, mother)[0]
     if (first && (first.born - mother.born) / 12 < 25) perYear *= cfg.separation.motherUnder25AtBirth
     if (rng.chance(1 - dpow(1 - Math.min(0.95, perYear), 1 / 12), 'family.separation', person.id, state.now)) separate(ctx, person, other)
@@ -478,7 +480,6 @@ export function familyMonth(ctx: Ctx): void {
   const fade = dexp(-1 / 12)
   for (const id of Object.keys(state.households).sort()) {
     const home = state.households[id]!
-    recomputeIncome(ctx, home)
     home.disruption *= fade
   }
 
@@ -490,7 +491,7 @@ export function familyMonth(ctx: Ctx): void {
   // Each December, a parent who has now been out of work for most of a year is news again.
   if (monthOf(state.now) === 11) {
     for (const parent of parentsAtHome(state, self)) {
-      const since = parent.work?.unemployedSince
+      const since = parent.work?.status === 'unemployed' ? parent.work.since : null
       if (since !== null && since !== undefined && state.now - since >= 9) tellPlayer(ctx, 'parent_still_out', parent, { months: state.now - since }, false)
     }
   }

@@ -31,6 +31,19 @@
     - when: "fact.schooled && (fact.level == 'bachelor' || fact.level == 'graduate')"
       text: "{fact.He} was a college graduate."
 
+- id: obituary.work
+  variants:
+    - when: "work.years >= 15 && work.longestYears >= 10 && work.jobs <= 3"
+      text: "{fact.He} worked as {an(work.longest)} for {num(work.longestYears)} years, most of them in the same place."
+    - when: "work.years >= 15 && work.longestYears >= 10 && work.jobs > 3"
+      text: "{fact.He} worked for {work.years} years, {work.longestYears} of them as {an(work.longest)}."
+    - when: "work.years >= 15 && work.longestYears < 10"
+      text: "{fact.He} worked for {work.years} years at {num(work.jobs)} jobs, and was {an(work.longest)} longer than anything else."
+    - when: "work.years >= 3 && work.years < 15"
+      text: "{fact.He} worked as {an(work.longest)}."
+    - when: "work.years < 3 && fact.age >= 30"
+      text: "{fact.He} did not work outside the home for long."
+
 - id: obituary.activity
   variants:
     - when: "fact.mainActivity == 'sedentary'"
@@ -62,11 +75,23 @@
 
 - id: why.admission
   variants:
-    - text: "{cap(fact.share)} applicants with an average record are admitted to a {fact.label}."
+    - text: "{cap(fact.share)} applicants with an average record are admitted to {an(fact.label)}."
 
 - id: why.equivalency
   variants:
     - text: "About seven in ten people who sit the equivalency exam pass it."
+
+- id: why.job_search
+  variants:
+    - text: "Most applications fail for everyone: about one in {fact.oneIn} ends in an offer, for an ordinary candidate in an ordinary year."
+
+- id: why.mortgage
+  variants:
+    - text: "{cap(fact.share)} applicants who meet a lender's rules, as you did, are approved."
+
+- id: why.program_admission
+  variants:
+    - text: "{cap(an(fact.label))} takes about half of applicants whose college grades are at its usual standard."
 
 # Milestone 1 only: mortality depends on nothing but age and sex. Removed when health arrives.
 - id: why.death_table_only

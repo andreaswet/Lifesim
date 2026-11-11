@@ -1,0 +1,243 @@
+# Money and housing (design §7.14, §7.2). Amounts are exact, as a bank, a landlord or the tax
+# office would state them, in the dollars of the day.
+
+- id: money.tax
+  fact: tax_settled
+  variants:
+    - when: "fact.which == 'refund' && fact.credits > 0"
+      text: "Your tax return brings a refund of {money(fact.amount)}, most of it credits you were owed."
+    - when: "fact.which == 'refund'"
+      text: "You file your taxes and get {money(fact.amount)} back."
+    - when: "fact.which == 'refund'"
+      text: "A tax refund of {money(fact.amount)} lands in your account in {world.monthName}."
+    - when: "fact.which == 'bill'"
+      text: "You owe {money(fact.amount)} in tax beyond what was withheld, and pay it."
+    - when: "fact.which == 'bill'"
+      text: "Filing your taxes ends with a bill for {money(fact.amount)}."
+    - when: "fact.which == 'even'"
+      text: "You file your taxes. What was withheld was almost exactly what you owed."
+
+- id: money.hardship
+  fact: hardship
+  variants:
+    - text: "The money runs out before the month does. You go without things you had thought of as basics."
+    - text: "There is not enough this month for food and the bills both. You choose, and the choosing stays with you."
+    - when: "fact.which == 'household' && home.children > 0"
+      text: "There is not enough money this month. You make sure the children eat, and work the rest out afterwards."
+
+- id: money.housing_behind
+  fact: housing_behind
+  variants:
+    - when: "fact.which == 'rent' && fact.months == 1"
+      text: "You cannot make the rent this month. The landlord's letter arrives within the week."
+    - when: "fact.which == 'rent' && fact.months == 2"
+      text: "A second month's rent goes unpaid. The landlord files for eviction; there is a court date on the notice."
+    - when: "fact.which == 'rent' && fact.months > 2"
+      text: "You are {num(fact.months)} months behind on the rent."
+    - when: "fact.which == 'mortgage' && fact.months == 1"
+      text: "You miss a mortgage payment. The bank writes, politely."
+    - when: "fact.which == 'mortgage' && fact.months == 2"
+      text: "A second mortgage payment is missed. The bank's letters are no longer polite."
+    - when: "fact.which == 'mortgage' && fact.months > 2"
+      text: "You are {num(fact.months)} payments behind on the mortgage, and the bank has given notice that it will foreclose."
+
+- id: money.payment_missed
+  fact: payment_missed
+  variants:
+    - text: "You miss a payment on what you owe. It goes on your credit file."
+    - text: "A bill goes unpaid this month, for the first time in a while. The late fee is added to what you owe."
+
+- id: money.charged_off
+  fact: debt_charged_off
+  variants:
+    - text: "The card company gives up on the {money(fact.amount)} you owe and writes it off. You no longer owe it; your credit file will say so for seven years."
+
+- id: money.student_due
+  fact: student_loans_due
+  variants:
+    - text: "Your student loans come due: {money(fact.payment)} a month for {num(fact.years)} years, on {money(fact.total)}."
+    - text: "The grace period on your student loans ends. The first payment is {money(fact.payment)}; the balance is {money(fact.total)}."
+
+- id: money.student_paid
+  fact: student_loans_paid
+  variants:
+    - text: "You make the last payment on your student loans. It took {num(fact.years)} years."
+    - text: "Your student loans are paid off. The confirmation is a one-line email."
+
+- id: money.loans_forgiven
+  fact: loans_forgiven
+  variants:
+    - text: "After twenty years of payments tied to your income, the remaining {money(fact.amount)} of your student loans is forgiven."
+
+- id: money.loans_income_driven
+  fact: loans_income_driven
+  variants:
+    - text: "You cannot cover the standard payment on your student loans, and move to a plan tied to your income: {money(fact.payment)} a month instead of {money(fact.standard)}. The balance will fall more slowly, or not at all."
+
+- id: money.rental_denied
+  fact: rental_denied
+  variants:
+    - when: "fact.which == 'income'"
+      text: "The landlord wants to see income of two and a half times the rent. At {money(fact.rent)} a month, yours falls short, and the application is refused."
+    - when: "fact.which == 'credit'"
+      text: "The landlord runs your credit and turns you down."
+    - when: "fact.which == 'record'"
+      text: "The eviction on your record comes up in the landlord's check, and the application is refused."
+
+- id: money.moved
+  fact: moved
+  variants:
+    - when: "fact.which == 'out' && fact.shared"
+      text: "You move out, into a shared place: your part of the rent is {money(fact.rent)} a month. There is a rota for the bathroom."
+    - when: "fact.which == 'out' && fact.shared"
+      text: "You leave home for a room in a shared apartment, {money(fact.rent)} a month. You are sent off with more kitchenware than the kitchen can hold."
+    - when: "fact.which == 'out' && !fact.shared"
+      text: "You move into a place of your own, at {money(fact.rent)} a month. The first night it is very quiet."
+    - when: "fact.which == 'out' && !fact.shared"
+      text: "You sign a lease: {money(fact.rent)} a month, and a deposit of the same. For the first time the name on the mailbox is only yours."
+    - when: "fact.which == 'moved' && !fact.shared"
+      text: "You move to a different place, at {money(fact.rent)} a month."
+    - when: "fact.which == 'moved' && fact.shared"
+      text: "You move into a shared place to bring the rent down to {money(fact.rent)}."
+    - when: "fact.which == 'back'"
+      text: "You move back in with your family. Your old room has become a place where things are stored."
+    - when: "fact.which == 'back'"
+      text: "You give up your place and go back to your parents' house. Nobody makes you feel it, which is its own kind of weight."
+
+- id: money.mortgage_denied
+  fact: mortgage_denied
+  variants:
+    - when: "fact.which == 'down'"
+      text: "You look into buying, at {money(fact.price)}. With the down payment and the costs you would need about {money(fact.needed)} in hand, and you do not have it."
+    - when: "fact.which == 'credit'"
+      text: "The lender will not consider a mortgage with your credit score as it stands."
+    - when: "fact.which == 'income'"
+      text: "The lender works out the payments on {money(fact.price)} against your income and says no: they would take too much of it."
+    - when: "fact.which == 'lender'"
+      text: "Your mortgage application for the {money(fact.price)} house is declined."
+
+- id: money.home_bought
+  fact: home_bought
+  variants:
+    - text: "You buy a house for {money(fact.price)}: {money(fact.down)} down, the rest on a thirty-year mortgage at {fact.rate}%. The payment is {money(fact.payment)} a month."
+    - when: "fact.gift > 0"
+      text: "You buy a house for {money(fact.price)}. {money(fact.gift)} of the down payment is from your family, given without conditions and with several opinions about the kitchen. The mortgage is {money(fact.payment)} a month at {fact.rate}%."
+    - text: "You close on a home at {money(fact.price)}. You sign your name forty times, hand over {money(fact.down)}, and are given keys. The mortgage is {money(fact.payment)} a month at {fact.rate}%."
+
+- id: money.home_sold
+  fact: home_sold
+  variants:
+    - when: "fact.left > 0"
+      text: "You sell the house for {money(fact.price)}. After the mortgage and the costs of selling, {money(fact.left)} is yours. You rent, for now, at {money(fact.rent)} a month."
+    - when: "fact.left == 0"
+      text: "You sell the house for {money(fact.price)}. The mortgage and the costs take all of it."
+
+- id: money.home_lost
+  fact: home_lost
+  variants:
+    - when: "fact.which == 'evicted' && fact.to == 'parents'"
+      text: "You are evicted. You carry what you can to your parents' house; the rest stays on the curb."
+    - when: "fact.which == 'evicted' && fact.to == 'room'"
+      text: "You are evicted. A friend of a friend has a room; you take it, with what fits in a car."
+    - when: "fact.which == 'foreclosed' && fact.to == 'parents'"
+      text: "The bank forecloses, and the house is sold at auction for less than it was worth. You move back in with your family."
+    - when: "fact.which == 'foreclosed' && fact.to == 'room'"
+      text: "The bank forecloses, and the house is sold at auction for less than it was worth. You find a room to rent in someone else's house."
+
+- id: money.rent_changed
+  fact: rent_changed
+  variants:
+    - when: "fact.which == 'up'"
+      text: "The lease renews with the rent raised from {money(fact.from)} to {money(fact.to)}."
+    - when: "fact.which == 'up'"
+      text: "Your rent goes up to {money(fact.to)} a month."
+    - when: "fact.which == 'down'"
+      text: "The landlord, short of tenants, renews your lease at {money(fact.to)}, down from {money(fact.from)}."
+
+- id: money.inheritance
+  fact: inheritance
+  variants:
+    - text: "Your {who.word}'s estate is settled. Your share comes to {money(fact.amount)}."
+    - text: "A lawyer's letter: {money(fact.amount)} from your {who.word}'s estate. You leave it in the account for a while without touching it."
+
+# Certificates and graduate school.
+- id: school.program_started
+  fact: program_started
+  variants:
+    - when: "fact.which == 'certificate'"
+      text: "You enroll in {an(fact.label)}: {span(fact.months)}, paid for with loans."
+    - when: "fact.which == 'certificate'"
+      text: "You start {an(fact.label)}. Half the class has come from jobs they did not want to grow old in."
+    - when: "fact.which == 'graduate' && fact.cost > 0"
+      text: "You are admitted to {an(fact.label)}. It will take {span(fact.months)} and about {money(fact.cost)} a year, borrowed."
+    - when: "fact.which == 'graduate' && fact.cost == 0"
+      text: "You are admitted to {an(fact.label)}. It is funded, barely, and will take {span(fact.months)} if it goes well."
+
+- id: school.program_finished
+  fact: program_finished
+  variants:
+    - when: "fact.which == 'completed' && fact.kind == 'certificate'"
+      text: "You finish the {fact.label} and pass the exam at the end of it. You are licensed."
+    - when: "fact.which == 'completed' && fact.kind == 'graduate' && fact.loans > 0"
+      text: "You complete the {fact.label}. You owe {money(fact.loans)}, and hold the qualification it was for."
+    - when: "fact.which == 'completed' && fact.kind == 'graduate' && fact.loans == 0"
+      text: "You complete the {fact.label}."
+    - when: "fact.which == 'failed' && fact.kind == 'certificate'"
+      text: "You do not finish the {fact.label}. The loans for it are yours all the same."
+    - when: "fact.which == 'failed' && fact.kind == 'graduate'"
+      text: "You leave the {fact.label} without the qualification. You owe {money(fact.loans)}."
+
+- id: school.program_denied
+  fact: program_denied
+  variants:
+    - text: "Your application to {an(fact.label)} is turned down."
+
+- id: label.act.program
+  variants: [{ text: "Train for a qualification" }]
+- id: label.edu.program_option
+  variants:
+    - when: "fact.cost > 0"
+      text: "{cap(fact.label)}: {span(fact.months)}, about {money(fact.cost)} a year"
+    - text: "{cap(fact.label)}: {span(fact.months)}, funded"
+
+# Actions.
+- id: label.act.move_out
+  variants: [{ text: "Move out and rent a place" }]
+- id: label.act.move
+  variants: [{ text: "Move to a different rental" }]
+- id: label.act.move_back
+  variants: [{ text: "Move back in with your family" }]
+- id: label.act.buy_home
+  variants: [{ text: "Buy a home" }]
+- id: label.act.sell_home
+  variants: [{ text: "Sell your home (worth about {money(fact.value)})" }]
+- id: label.home.rent_option
+  variants:
+    - when: "fact.which == 'shared'"
+      text: "A room in a shared place, {money(fact.rent)} a month"
+    - when: "fact.which == 'cheap'"
+      text: "A cheap place of your own, {money(fact.rent)} a month"
+    - when: "fact.which == 'ordinary'"
+      text: "An ordinary apartment, {money(fact.rent)} a month"
+    - text: "A good apartment in a good neighborhood, {money(fact.rent)} a month"
+- id: label.home.buy_option
+  variants:
+    - when: "fact.which == 'starter'"
+      text: "A small house that needs work, about {money(fact.price)}"
+    - when: "fact.which == 'modest'"
+      text: "A modest house, about {money(fact.price)}"
+    - when: "fact.which == 'ordinary'"
+      text: "An ordinary family house, about {money(fact.price)}"
+    - when: "fact.which == 'good'"
+      text: "A good house in a good neighborhood, about {money(fact.price)}"
+    - text: "A fine house in the best part of town, about {money(fact.price)}"
+
+- id: prompt.home.behind
+  variants:
+    - when: "fact.left > 1"
+      text: "You are {num(fact.months)} month{fact.months == 1 ? '' : 's'} behind on the rent. If it reaches three, the landlord will go to court. Your family has said you can come home."
+    - text: "You are behind on the rent, and the landlord has said what happens next. Your family has said you can come home."
+- id: label.home.move_back
+  variants: [{ text: "Give up the place and move back in with your family" }]
+- id: label.home.stay
+  variants: [{ text: "Stay, and try to catch up" }]

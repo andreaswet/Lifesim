@@ -7,7 +7,7 @@
  */
 
 import { z } from 'zod'
-import { EarningsDef, EducationDef, FamilyDef, NormsDef, SchoolNamesDef, StateDef } from './country-schema'
+import { EconomyDef, EducationDef, FamilyDef, LaborDef, MoneyDef, NormsDef, PeopleDef, SchoolNamesDef, StateDef, TaxDef } from './country-schema'
 
 /** An expression in the content language. YAML numbers and booleans are accepted and stringified. */
 const Expr = z.union([z.string(), z.number(), z.boolean()]).transform((v) => String(v))
@@ -32,7 +32,7 @@ export type FactSpec = z.infer<typeof FactSpec>
 /** The fixed vocabulary of things content may do to state (design §9.4). */
 const Effect = z.union([
   z.strictObject({ adjust: z.strictObject({ stock: StockId, delta: Expr, cause: Id }) }),
-  z.strictObject({ setPolicy: z.strictObject({ activity: Id.optional(), study: Id.optional() }) }),
+  z.strictObject({ setPolicy: z.strictObject({ activity: Id.optional(), study: Id.optional(), effort: Id.optional(), search: Id.optional(), lifestyle: Id.optional(), saving: Id.optional() }) }),
   z.strictObject({ setFlag: z.strictObject({ name: Id, value: Expr }) }),
   z.strictObject({ startProcess: Id }),
   z.strictObject({ emit: FactSpec }),
@@ -262,7 +262,11 @@ const CountryDef = z.strictObject({
   }),
   states: z.array(StateDef).min(1),
   family: FamilyDef,
-  earnings: EarningsDef,
+  people: PeopleDef,
+  economy: EconomyDef,
+  labor: LaborDef,
+  tax: TaxDef,
+  money: MoneyDef,
   education: EducationDef,
   norms: NormsDef,
   schools: SchoolNamesDef,
@@ -296,9 +300,14 @@ export const FileSchemas = {
   events: z.array(EventDef),
   processes: z.array(ProcessDef),
   text: z.array(TextDef),
-  country: CountryDef.omit({ lifeTable: true, names: true, states: true, family: true, earnings: true, education: true, norms: true, schools: true }),
+  country: CountryDef.omit({ lifeTable: true, names: true, states: true, family: true, people: true, economy: true, labor: true, tax: true, money: true, education: true, norms: true, schools: true }),
   family: FamilyDef,
-  earnings: EarningsDef,
+  people: PeopleDef,
+  economy: EconomyDef,
+  labor: LaborDef.omit({ occupations: true }),
+  occupations: LaborDef.shape.occupations,
+  tax: TaxDef,
+  money: MoneyDef,
   education: EducationDef,
   norms: NormsDef,
   schools: SchoolNamesDef,

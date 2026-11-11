@@ -84,9 +84,14 @@ export function validateContent(bundle: ContentBundle): string[] {
         checkExpr(where, effect.adjust.delta, scopes)
         if (!factorIds.has(effect.adjust.cause)) fail(where, `cause '${effect.adjust.cause}' is not in factors`)
       } else if ('setPolicy' in effect) {
-        const { activity, study } = effect.setPolicy
+        const { activity, study, effort, search, lifestyle, saving } = effect.setPolicy
+        const country = bundle.country
         if (activity !== undefined && !activityIds.has(activity)) fail(where, `unknown activity level '${activity}'`)
         if (study !== undefined && !studyIds.has(study)) fail(where, `unknown study level '${study}'`)
+        if (effort !== undefined && !country.labor.performance.levels.some((l) => l.id === effort)) fail(where, `unknown effort level '${effort}'`)
+        if (search !== undefined && !country.labor.search.levels.some((l) => l.id === search)) fail(where, `unknown search level '${search}'`)
+        if (lifestyle !== undefined && !country.money.living.levels.some((l) => l.id === lifestyle)) fail(where, `unknown lifestyle level '${lifestyle}'`)
+        if (saving !== undefined && !country.money.saving.levels.some((l) => l.id === saving)) fail(where, `unknown saving level '${saving}'`)
       } else if ('setFlag' in effect) {
         checkExpr(where, effect.setFlag.value, scopes)
       } else if ('startProcess' in effect) {
@@ -243,6 +248,43 @@ export function validateContent(bundle: ContentBundle): string[] {
   const table = bundle.country.lifeTable
   if (table.male.length !== table.female.length) fail('country.lifeTable', 'male and female columns differ in length')
   if (table.maxAge < table.male.length) fail('country.lifeTable', 'maxAge is below the last listed age')
+
+  // The labor market: every occupation belongs to a sector, can be reached, and names real majors.
+  const { labor, economy, money, people, education } = bundle.country
+  const sectorIds = new Set(economy.sectors.map((s) => s.id))
+  const majorIds = new Set(education.majors.map((m) => m.id))
+  const programCredentials = new Set(labor.programs.map((p) => p.credential))
+  unique('labor.occupations', labor.occupations.map((o) => o.id))
+  unique('labor.programs', labor.programs.map((p) => p.id))
+  unique('economy.sectors', economy.sectors.map((s) => s.id))
+  for (const occ of labor.occupations) {
+    const where = `labor.occupations.${occ.id}`
+    if (!sectorIds.has(occ.sector)) fail(where, `unknown sector '${occ.sector}'`)
+    if (!labor.employers.names.bySector[occ.sector]) fail(where, `no employer names for sector '${occ.sector}'`)
+    for (const major of occ.majors ?? []) if (!majorIds.has(major)) fail(where, `unknown major '${major}'`)
+    if (occ.credential && !occ.trainee && !programCredentials.has(occ.credential) && !Object.values(labor.degreeCredentials).includes(occ.credential)) fail(where, `nothing awards the credential '${occ.credential}'`)
+  }
+  for (const program of labor.programs) for (const major of program.majors ?? []) if (!majorIds.has(major)) fail(`labor.programs.${program.id}`, `unknown major '${major}'`)
+  for (const major of Object.keys(labor.degreeCredentials)) if (!majorIds.has(major)) fail('labor.degreeCredentials', `unknown major '${major}'`)
+  for (let i = 1; i < labor.ladder.length; i++) if (labor.ladder[i]!.months < labor.ladder[i - 1]!.months) fail('labor.ladder', 'rungs must be in ascending order')
+  for (const [key, levels, chosen] of [
+    ['labor.performance', labor.performance.levels, labor.performance.default],
+    ['labor.search', labor.search.levels, labor.search.default],
+    ['money.living', money.living.levels, money.living.default],
+    ['money.saving', money.saving.levels, money.saving.default],
+  ] as const) {
+    unique(key, levels.map((l) => l.id))
+    if (!levels.some((l) => l.id === chosen)) fail(key, `default '${chosen}' is not one of its levels`)
+  }
+  unique('people.groups', people.groups.map((g) => g.id))
+  const births = people.groups.reduce((a, g) => a + g.share, 0)
+  if (Math.abs(births - 1) > 0.01) fail('people.groups', `shares of births sum to ${births.toFixed(3)}, not 1`)
+  for (const group of [...Object.keys(labor.search.callbacks.byGroup), ...Object.keys(money.housing.approval.byGroup)]) {
+    if (!people.groups.some((g) => g.id === group)) fail('people', `a documented effect names an unknown group '${group}'`)
+  }
+  for (const id of ['job_market', 'job_sector', 'job_experience', 'job_first', 'job_gap', 'job_age', 'job_interview', 'job_fit', 'job_callbacks', 'loan_credit', 'loan_burden', 'loan_down', 'loan_group', 'adm_college_record']) {
+    if (!factorIds.has(id)) fail('factors', `missing required factor '${id}'`)
+  }
 
   return problems
 }

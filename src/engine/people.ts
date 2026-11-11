@@ -10,6 +10,7 @@ export function ageYears(person: Person, month: number): number {
 export function blankEducation(status: Education['status'], level: EduLevel): Education {
   return {
     status,
+    program: null,
     level,
     grade: null,
     school: null,

@@ -1,0 +1,103 @@
+# The economy (design §7.1): a business cycle and what it drives. The same seed always lives
+# through the same economy, whatever the player does.
+#
+# Institutions are frozen in real terms (design decision Q7), and so is the long-run level of real
+# wages: the simulated cohort is compared with today's statistics, so a worker of fifty in 2076
+# earns what a worker of fifty earns today, in today's dollars. Prices themselves rise (Q5).
+#
+# Rates are in percent a year unless the name says otherwise. Figures marked (memory) were written
+# from memory of the cited series; `npm run batch` reports what they produce.
+source: "NBER business cycle dates; BLS CPS and CPI; Federal Reserve H.15; Shiller stock market data; FHFA house price index (all memory)"
+
+# A regime model with duration-dependent switching. Since 1945 the United States has had a
+# recession about every six years, lasting about ten months, and a severe one every few decades.
+cycle:
+  source: "NBER, US Business Cycle Expansions and Contractions, 1945–2020 (memory)"
+  recessionBase: 0.004
+  recessionPerMonth: 0.0006
+  recessionMinMonths: 6
+  recessionEndPerMonth: 0.22
+  severeShare: 0.2
+  severeEndPerMonth: 0.085
+  recoveryMonths: 24
+
+# What each regime pulls toward: the unemployment rate, inflation, the monthly mean and spread of
+# stock returns (log, nominal, dividends included), and real house-price growth a year.
+regimes:
+  expansion: { unemployment: 4.5, inflation: 2.6, stockMean: 0.0114, stockSd: 0.031, housing: 1.3 }
+  recession: { unemployment: 7.6, inflation: 1.6, stockMean: -0.020, stockSd: 0.052, housing: -2.5 }
+  severe: { unemployment: 10.5, inflation: 0.8, stockMean: -0.028, stockSd: 0.065, housing: -9.0 }
+  recovery: { unemployment: 4.5, inflation: 2.2, stockMean: 0.0138, stockSd: 0.036, housing: 0.5 }
+
+# Unemployment rises fast and falls slowly. `reference` is the rate at which the job-loss and
+# job-finding figures in labor/market.yaml were measured (2024).
+unemployment:
+  source: "BLS CPS, unemployment rate 1948–2024: mean 5.7%, range 2.5% to 14.8% (memory)"
+  reference: 4.0
+  riseMonths: 5
+  fallMonths: 26
+
+inflation:
+  source: "BLS CPI-U, 1960–2024 (memory)"
+  revertMonths: 30
+  # Monthly shock to the yearly rate, in points.
+  noise: 0.22
+  # Now and then inflation takes off for a few years, as in the 1970s and in 2021–2023.
+  spikePerMonth: 0.0022
+  spikeSize: [3, 8]
+  spikeFadeMonths: 30
+
+# Pay follows prices with a lag, and loses or gains ground with the job market.
+wages:
+  source: "BLS Employment Cost Index and CPI (memory)"
+  # The rate at which real pay neither gains nor loses ground: the long-run average.
+  neutralUnemployment: 5.6
+  # Percent of pay per point of unemployment above that.
+  perPointOfUnemployment: -0.55
+  lagMonths: 14
+  # How much of a state's price level shows up in its pay (Moretti 2013).
+  regional: 0.7
+
+rates:
+  source: "Federal Reserve H.15 and G.19; Freddie Mac PMMS; Federal Student Aid (memory)"
+  # A Taylor-style rule for the policy rate.
+  realNeutral: 0.8
+  inflationWeight: 1.4
+  unemploymentWeight: -0.9
+  smoothingMonths: 8
+  mortgageBase: 4.0
+  mortgagePolicyWeight: 0.65
+  cardSpread: 15.5
+  savingsShare: 0.45
+  studentLoan: 6.5
+  bondSpread: 1.2
+  bondDuration: 6
+
+stocks:
+  source: "Shiller; Dimson, Marsh & Staunton: long-run real return about 6.5–7% a year, volatility about 17% (memory)"
+  fatTailChance: 0.04
+  fatTailScale: 2.6
+
+housing:
+  source: "FHFA and Case-Shiller indexes: real growth near 1% a year, large falls in severe recessions (memory)"
+  noise: 0.35
+  momentum: 0.85
+
+# Each line of work belongs to a sector. A sector has a sensitivity to the cycle, a slow trend
+# (percent a year) that wanders by a seeded random walk, and noise: over a life some lines of
+# work quietly shrink and others grow.
+sectors:
+  - { id: retail, label: retail, cyclical: 1.0, trend: -0.3, noise: 0.5 }
+  - { id: hospitality, label: restaurants and hotels, cyclical: 1.4, trend: 0.2, noise: 0.6 }
+  - { id: transport, label: transport and warehousing, cyclical: 1.2, trend: 0.3, noise: 0.5 }
+  - { id: services, label: personal and building services, cyclical: 0.9, trend: 0.2, noise: 0.4 }
+  - { id: health, label: health care, cyclical: 0.3, trend: 1.0, noise: 0.3 }
+  - { id: construction, label: construction, cyclical: 2.0, trend: 0.3, noise: 0.7 }
+  - { id: manufacturing, label: manufacturing and repair, cyclical: 1.6, trend: -0.4, noise: 0.5 }
+  - { id: business, label: business services, cyclical: 1.0, trend: 0.4, noise: 0.4 }
+  - { id: finance, label: finance and real estate, cyclical: 1.3, trend: 0.3, noise: 0.6 }
+  - { id: tech, label: technology, cyclical: 1.2, trend: 1.0, noise: 0.8 }
+  - { id: public, label: government, cyclical: 0.3, trend: 0.0, noise: 0.2 }
+  - { id: education, label: education, cyclical: 0.4, trend: 0.1, noise: 0.2 }
+  - { id: media, label: media and design, cyclical: 1.3, trend: -0.6, noise: 0.7 }
+  - { id: agriculture, label: farming, cyclical: 0.6, trend: -0.4, noise: 0.6 }
