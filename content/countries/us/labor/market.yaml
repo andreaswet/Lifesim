@@ -39,7 +39,7 @@ employers:
   # schooling matches BLS 2024 (6.2, 4.2, 3.5, 2.9, 2.3, 1.8 percent) at the reference rate.
   trouble:
     source: "BLS JOLTS layoffs and discharges; BLS Education Pays 2024 (calibrated)"
-    perMonth: { less_than_hs: 0.026, high_school: 0.017, some_college: 0.014, associate: 0.012, bachelor: 0.009, graduate: 0.007 }
+    perMonth: { less_than_hs: 0.022, high_school: 0.0145, some_college: 0.012, associate: 0.010, bachelor: 0.0076, graduate: 0.006 }
     perPointOfUnemployment: 0.22
     quietMonths: [3, 10]
     recoverPerMonth: 0.05
@@ -78,7 +78,7 @@ search:
     byGroup: { black: -0.31, hispanic: -0.22 }
   # Monthly chance that someone in work hears of a better job, by age. Set against median tenure
   # of 3.9 years and 12 to 13 jobs between 18 and 56 (BLS; NLSY79).
-  outsideOffer: [[16, 0.07], [22, 0.06], [28, 0.025], [35, 0.009], [45, 0.005], [65, 0.002]]
+  outsideOffer: [[16, 0.08], [22, 0.07], [28, 0.03], [35, 0.01], [45, 0.006], [65, 0.002]]
   switchGain: 0.03
   switch: 0.3
   switchOverqualified: 0.7
@@ -143,7 +143,7 @@ separations:
   source: "BLS JOLTS quits and discharges (memory)"
   # Leaving a job for no job, by age. Most real quits are straight to another job; those are the
   # outside offers above.
-  quitPerMonth: [[16, 0.015], [20, 0.01], [25, 0.005], [30, 0.003], [45, 0.0012], [60, 0.0012]]
+  quitPerMonth: [[16, 0.01], [20, 0.006], [25, 0.002], [30, 0.001], [45, 0.0006], [60, 0.0006]]
   # Layoffs fall on newer staff first: exposure is divided by one plus years of tenure over this.
   tenureShield: 6
   # Let go with no warning at all.
